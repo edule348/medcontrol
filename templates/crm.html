@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - CRM - Gestão de Agendamentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/crm" class="block px-4 py-2 rounded bg-slate-800 text-purple-400 font-semibold">📅 CRM - Gestão de Agendamentos</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Painel de Cadastros</a>
+                {% if session.is_admin %}
+                <a href="/admin/usuarios" class="block px-4 py-2 rounded hover:bg-red-950 text-red-400 font-semibold">Gestão de Usuários (Admin)</a>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Bar -->
+        <div class="bg-white border-b px-8 py-4 flex justify-between items-center shadow-sm">
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    CRM - Gestão de Consultas
+                </h1>
+                <p class="text-xs text-slate-500">Acompanhamento e funil de atendimento dos pacientes.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <form method="GET" action="/crm" class="flex gap-2">
+                    <input type="text" name="busca" value="{{ busca }}" placeholder="Pesquisar..." class="p-2 border rounded-lg text-sm w-64 bg-slate-50">
+                    <button type="submit" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-900">Pesquisar</button>
+                    {% if busca %}
+                    <a href="/crm" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold flex items-center">Limpar</a>
+                    {% endif %}
+                </form>
+                <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">+ Nova Consulta</a>
+            </div>
+        </div>
+
+        <!-- Quadro Kanban (Colunas) -->
+        <div class="flex-1 p-6 overflow-x-auto flex gap-6 items-start">
+            
+            <!-- 1. Pacientes -->
+            <div class="w-80 bg-slate-200 rounded-xl p-4 flex flex-col max-h-full shadow-inner">
+                <div class="flex justify-between items-center mb-3 font-bold text-slate-700 text-sm px-1">
+                    <span>Pacientes</span>
+                    <span class="bg-slate-300 text-slate-700 text-xs px-2 py-0.5 rounded-full">{{ pacientes|length }} cartões</span>
+                </div>
+                <div class="overflow-y-auto space-y-3 flex-1 pr-1">
+                    {% for p in pacientes %}
+                    <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 text-xs space-y-1.5">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                            <span>👤</span> <a href="/cliente/perfil/{{ p.id }}" class="text-blue-600 hover:underline">{{ p.nome }}</a>
+                        </div>
+                        <div class="text-slate-500">📞 {{ p.telefones }}</div>
+                        <div class="text-slate-500">✉️ {{ p.email or 'Sem e-mail' }}</div>
+                        <div class="pt-1 flex justify-between items-center border-t border-slate-100">
+                            <span class="bg-indigo-100 text-indigo-800 font-semibold px-2 py-0.5 rounded text-[10px]">Cadastrado</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-slate-400 text-xs py-6">Nenhum paciente disponível</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 2. Agendamentos -->
+            <div class="w-80 bg-slate-200 rounded-xl p-4 flex flex-col max-h-full shadow-inner">
+                <div class="flex justify-between items-center mb-3 font-bold text-slate-700 text-sm px-1">
+                    <span>Agendamentos</span>
+                    <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">{{ agendamentos|length }} cartões</span>
+                </div>
+                <div class="overflow-y-auto space-y-3 flex-1 pr-1">
+                    {% for a in agendamentos %}
+                    <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 text-xs space-y-2">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                            <span>🧑‍⚕️</span> <a href="/cliente/perfil/{{ a.id }}" class="text-blue-600 hover:underline">{{ a.nome_cliente }}</a>
+                        </div>
+                        <div class="text-slate-500">📞 {{ a.telefones }}</div>
+                        <div class="flex justify-between items-center">
+                            <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold text-[10px]">{{ a.especialidade }}</span>
+                            <span class="font-semibold text-slate-600">{{ a.data_consulta }} - {{ a.horario }}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500">Dr(a). {{ a.medico }} | Local: {{ a.clinica_hospital }}</div>
+                        
+                        <div class="pt-2 flex gap-1 border-t border-slate-100 justify-end">
+                            <a href="/crm/retorno/{{ a.id }}" title="Retorno" class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-amber-200">Retorno</a>
+                            <a href="/crm/retorno/{{ a.id }}" title="Remarcar" class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-purple-200">Remarcar</a>
+                            <a href="/crm/mover/{{ a.id }}/Cancelados" title="Cancelar" class="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-red-200">Cancelar</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-slate-400 text-xs py-6">Nenhum agendamento ativo</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 3. Retorno -->
+            <div class="w-80 bg-slate-200 rounded-xl p-4 flex flex-col max-h-full shadow-inner">
+                <div class="flex justify-between items-center mb-3 font-bold text-slate-700 text-sm px-1">
+                    <span>Retorno</span>
+                    <span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full">{{ retorno|length }} cartões</span>
+                </div>
+                <div class="overflow-y-auto space-y-3 flex-1 pr-1">
+                    {% for r in retorno %}
+                    <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 text-xs space-y-2">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                            <span>🔄</span> <a href="/cliente/perfil/{{ r.id }}" class="text-blue-600 hover:underline">{{ r.nome_cliente }}</a>
+                        </div>
+                        <div class="text-slate-500">📞 {{ r.telefones }}</div>
+                        <div class="flex justify-between items-center">
+                            <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold text-[10px]">{{ r.especialidade }}</span>
+                            <span class="font-semibold text-slate-600">Dr(a). {{ r.medico }} | {{ r.data_consulta }}</span>
+                        </div>
+                        
+                        <div class="pt-2 flex gap-1 border-t border-slate-100 justify-end">
+                            <a href="/crm/retorno/{{ r.id }}" class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-purple-200">Remarcar</a>
+                            <a href="/crm/mover/{{ r.id }}/Cancelados" class="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-red-200">Cancelar</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-slate-400 text-xs py-6">Nenhum paciente para retorno</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 4. Reagendamento -->
+            <div class="w-80 bg-slate-200 rounded-xl p-4 flex flex-col max-h-full shadow-inner">
+                <div class="flex justify-between items-center mb-3 font-bold text-slate-700 text-sm px-1">
+                    <span>Reagendamento</span>
+                    <span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full">{{ reagendamento|length }} cartões</span>
+                </div>
+                <div class="overflow-y-auto space-y-3 flex-1 pr-1">
+                    {% for re in reagendamento %}
+                    <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 text-xs space-y-2">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                            <span>⏳</span> <a href="/cliente/perfil/{{ re.id }}" class="text-blue-600 hover:underline">{{ re.nome_cliente }}</a>
+                        </div>
+                        <div class="text-slate-500">📞 {{ re.telefones }}</div>
+                        <div class="text-[11px] text-slate-600">Remarcação com Dr(a). {{ re.medico }}</div>
+                        
+                        <div class="pt-2 flex gap-1 border-t border-slate-100 justify-end">
+                            <a href="/crm/retorno/{{ re.id }}" class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-purple-200">Remarcar</a>
+                            <a href="/crm/mover/{{ re.id }}/Cancelados" class="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-red-200">Cancelar</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-slate-400 text-xs py-6">Nenhum reagendamento pendente</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 5. Cancelados -->
+            <div class="w-80 bg-slate-200 rounded-xl p-4 flex flex-col max-h-full shadow-inner">
+                <div class="flex justify-between items-center mb-3 font-bold text-slate-700 text-sm px-1">
+                    <span>Cancelados</span>
+                    <span class="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">{{ cancelados|length }} cartões</span>
+                </div>
+                <div class="overflow-y-auto space-y-3 flex-1 pr-1">
+                    {% for c in cancelados %}
+                    <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 text-xs space-y-2 opacity-80">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5 text-sm">
+                            <span>❌</span> <a href="/cliente/perfil/{{ c.id }}" class="text-blue-600 hover:underline">{{ c.nome_cliente }}</a>
+                        </div>
+                        <div class="text-slate-500">📞 {{ c.telefones }}</div>
+                        <div class="text-slate-500">Data prevista: {{ c.data_consulta }} - {{ c.horario }}</div>
+                        <div class="pt-1 text-[10px] text-emerald-600 font-bold bg-emerald-50 p-1 rounded text-center">Horário liberado automaticamente na agenda</div>
+                        
+                        <div class="pt-2 flex gap-1 border-t border-slate-100 justify-end">
+                            <a href="/crm/retorno/{{ c.id }}" class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-[10px] font-bold hover:bg-blue-200">Agendar</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-slate-400 text-xs py-6">Nenhum atendimento cancelado</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

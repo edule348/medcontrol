@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Cadastro de Médicos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/crm" class="block px-4 py-2 rounded hover:bg-slate-800 text-purple-400 font-semibold">📊 Módulo CRM</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded bg-blue-600 text-white font-semibold">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Painel de Cadastros</a>
+                {% if session.is_admin %}
+                <a href="/admin/usuarios" class="block px-4 py-2 rounded hover:bg-red-950 text-red-400 font-semibold">Gestão de Usuários (Admin)</a>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <!-- Conteúdo -->
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <div class="flex justify-between items-center mb-6 max-w-4xl mx-auto w-full">
+            <h1 class="text-2xl font-bold text-slate-800">Cadastro de Médicos e Locais de Atendimento</h1>
+            <a href="/cadastros/medicos" class="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold hover:bg-slate-900">Ver Médicos Cadastrados</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="max-w-4xl mx-auto w-full bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Formulário -->
+        <div class="bg-white p-8 rounded-lg shadow max-w-4xl mx-auto w-full">
+            <form method="POST" class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Nome do Médico</label>
+                        <input type="text" name="nome" required class="w-full mt-1 p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Telefone</label>
+                        <input type="text" name="telefone" placeholder="(51) 98888-7777" class="w-full mt-1 p-2 border rounded">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div id="especialidades-container">
+                        <label class="block text-sm font-medium text-slate-700">Especialidade(s)</label>
+                        <div class="flex gap-2 mt-1">
+                            <input type="text" name="especialidades[]" placeholder="Ex: Cardiologia" required class="w-full p-2 border rounded">
+                            <button type="button" onclick="adicionarEspecialidade()" class="bg-slate-200 px-3 py-2 rounded text-sm font-bold hover:bg-slate-300">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Tipo de Atendimento</label>
+                        <select name="tipo_atendimento" class="w-full mt-1 p-2 border rounded">
+                            <option value="Particular">Particular</option>
+                            <option value="Convênio">Convênio</option>
+                            <option value="Particular e Convênio">Particular e Convênio</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr class="my-6">
+                
+                <h2 class="font-bold text-lg text-slate-800">Locais, Dias da Semana, Horários e Tempo de Atendimento</h2>
+                <p class="text-xs text-slate-500 mb-4">Defina o local, horários de início e fim, tempo de atendimento em minutos e os dias da semana em que o médico atende:</p>
+
+                <div id="locais-container" class="space-y-4">
+                    <div class="bg-slate-50 p-4 rounded border border-slate-200 space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div class="md:col-span-1">
+                                <label class="text-xs font-semibold block mb-1 text-slate-700">Clínica / Hospital</label>
+                                <select name="clinica_id[]" class="w-full p-2 border rounded text-sm bg-white">
+                                    <option value="">Selecione o Local</option>
+                                    {% for cl in clinicas %}
+                                    <option value="{{ cl.id }}">{{ cl.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold block mb-1 text-slate-700">Início</label>
+                                <input type="time" name="horario_inicio[]" class="w-full p-2 border rounded text-sm bg-white">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold block mb-1 text-slate-700">Fim</label>
+                                <input type="time" name="horario_fim[]" class="w-full p-2 border rounded text-sm bg-white">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold block mb-1 text-slate-700">Tempo (min)</label>
+                                <input type="text" name="duracao_minutos[]" placeholder="Ex: 15" class="w-full p-2 border rounded text-sm bg-white">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold block mb-1 text-slate-700">Dias de Atendimento:</label>
+                            <div class="flex flex-wrap gap-4 text-sm">
+                                <label><input type="checkbox" name="dias_0[]" value="Domingo"> Domingo</label>
+                                <label><input type="checkbox" name="dias_0[]" value="Segunda"> Segunda</label>
+                                <label><input type="checkbox" name="dias_0[]" value="Terça"> Terça</label>
+                                <label><input type="checkbox" name="dias_0[]" value="Quarta"> Quarta</label>
+                                <label><input type="checkbox" name="dias_0[]" value="Quinta"> Quinta</label>
+                                <label><input type="checkbox" name="dias_0[]" value="Sexta"> Sexta</label>
+                                <label><input type="checkbox" name="dias_0[]" value="Sábado"> Sábado</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" onclick="adicionarLocal()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded text-sm font-bold hover:bg-slate-300">+ Adicionar Outro Local / Horário</button>
+                
+                <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700 mt-6">Salvar Médico Completo</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function adicionarEspecialidade() {
+            const container = document.getElementById('especialidades-container');
+            const div = document.createElement('div');
+            div.className = 'flex gap-2 mt-2';
+            div.innerHTML = '<input type="text" name="especialidades[]" placeholder="Ex: Cardiologia" class="w-full p-2 border rounded"><button type="button" onclick="this.parentElement.remove()" class="bg-red-200 text-red-700 px-3 py-2 rounded font-bold hover:bg-red-300">x</button>';
+            container.appendChild(div);
+        }
+
+        let contadorLocais = 0;
+        function adicionarLocal() {
+            contadorLocais++;
+            const container = document.getElementById('locais-container');
+            const div = document.createElement('div');
+            div.className = 'bg-slate-50 p-4 rounded border border-slate-200 space-y-3 relative';
+            div.innerHTML = `
+                <button type="button" onclick="this.parentElement.remove()" class="absolute top-2 right-2 bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-bold">Remover</button>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="md:col-span-1">
+                        <label class="text-xs font-semibold block mb-1 text-slate-700">Clínica / Hospital</label>
+                        <select name="clinica_id[]" class="w-full p-2 border rounded text-sm bg-white">
+                            <option value="">Selecione o Local</option>
+                            {% for cl in clinicas %}
+                            <option value="{{ cl.id }}">{{ cl.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold block mb-1 text-slate-700">Início</label>
+                        <input type="time" name="horario_inicio[]" class="w-full p-2 border rounded text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold block mb-1 text-slate-700">Fim</label>
+                        <input type="time" name="horario_fim[]" class="w-full p-2 border rounded text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold block mb-1 text-slate-700">Tempo (min)</label>
+                        <input type="text" name="duracao_minutos[]" placeholder="Ex: 15" class="w-full p-2 border rounded text-sm bg-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold block mb-1 text-slate-700">Dias de Atendimento:</label>
+                    <div class="flex flex-wrap gap-4 text-sm">
+                        <label><input type="checkbox" name="dias_${contadorLocais}[]" value="Domingo"> Domingo</label>
+                        <label><input type="checkbox" name="dias_${contadorLocais}[]" value="Segunda"> Segunda</label>
+                        <label><input type="checkbox" name="dias_${contadorLocais}[]" value="Terça"> Terça</label>
+                        <label><input type="checkbox" name="dias_${contadorLocais}[]" value="Quarta"> Quarta</label>
+                        <label><input type="checkbox" name="dias_${contadorLocais}[]" value="Quinta"> Quinta</label>
+                        <label><input type="checkbox" name="dias_${contadorLocais}[]" value="Sexta"> Sexta</label>
+                        <label><input type="checkbox" name="dias_${contadorLocais}[]" value="Sábado"> Sábado</label>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - MedControl</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="max-w-md w-full bg-white p-8 rounded-lg shadow-sm border">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">🏥 MedControl</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Usuário</label>
+                <input type="text" name="username" required class="w-full mt-1 p-2 border rounded bg-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Senha</label>
+                <input type="password" name="senha" required class="w-full mt-1 p-2 border rounded bg-white">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded font-bold hover:bg-blue-700 shadow">Entrar no Sistema</button>
+        </form>
+    </div>
+</body>
+</html>

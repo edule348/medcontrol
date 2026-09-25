@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciar Usuários - MedControl</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-sm border">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h1 class="text-xl font-bold text-red-600">🛡️ Gerenciamento de Usuários (Painel do Administrador)</h1>
+            <a href="/" class="text-blue-600 hover:underline text-sm font-semibold">Voltar à Agenda</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4 text-sm">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="space-y-4 mb-8 bg-gray-50 p-4 rounded border">
+            <h2 class="font-bold text-gray-700 text-sm">Criar Novo Usuário / Atendente</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nome de Usuário (Login)</label>
+                    <input type="text" name="username" required class="w-full mt-1 p-2 border rounded bg-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Senha temporária</label>
+                    <input type="password" name="senha" required class="w-full mt-1 p-2 border rounded bg-white">
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" name="is_admin" id="is_admin" value="1" class="w-4 h-4">
+                <label for="is_admin" class="text-sm font-medium text-gray-700">Conceder privilégios de Administrador</label>
+            </div>
+            <button type="submit" class="w-full bg-red-600 text-white p-2.5 rounded font-bold hover:bg-red-700 shadow">Cadastrar Novo Usuário</button>
+        </form>
+
+        <h2 class="text-lg font-bold mb-4 text-gray-700">Usuários do Sistema</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b text-sm text-gray-600 bg-gray-50">
+                        <th class="p-3">Usuário</th>
+                        <th class="p-3">Tipo</th>
+                        <th class="p-3">Status</th>
+                        <th class="p-3 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr class="border-b text-sm">
+                        <td class="p-3 font-medium">{{ u.username }}</td>
+                        <td class="p-3">
+                            {% if u.is_admin %}
+                                <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">Administrador</span>
+                            {% else %}
+                                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-semibold">Atendente</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3">
+                            {% if u.status == 'ativo' %}
+                                <span class="text-green-600 font-semibold">Ativo</span>
+                            {% else %}
+                                <span class="text-red-500 font-semibold">Bloqueado</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3 text-right space-x-2">
+                            {% if u.username != 'admin' %}
+                            <a href="/admin/usuario/toggle/{{ u.id }}" class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded text-xs font-semibold hover:bg-yellow-200">
+                                {% if u.status == 'ativo' %}Bloquear{% else %}Desbloquear{% endif %}
+                            </a>
+                            <a href="/admin/usuario/deletar/{{ u.id }}" onclick="return confirm('Tem certeza que deseja excluir este usuário?')" class="bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-semibold hover:bg-red-200">Excluir</a>
+                            {% else %}
+                            <span class="text-gray-400 text-xs italic">Protegido</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

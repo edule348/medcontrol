@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Painel de Cadastros</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded bg-blue-600 text-white font-semibold">Painel de Cadastros</a>
+                {% if session.is_admin %}
+                <a href="/admin/usuarios" class="block px-4 py-2 rounded hover:bg-red-950 text-red-400 font-semibold">Gestão de Usuários (Admin)</a>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <!-- Conteúdo -->
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <h1 class="text-2xl font-bold mb-2 text-slate-800">Painel de Cadastros Realizados</h1>
+        <p class="text-slate-600 mb-8">Selecione o módulo abaixo para gerenciar, pesquisar e editar os registros:</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a href="/cadastros/pacientes" class="bg-white p-6 rounded-xl shadow-md border hover:border-blue-500 hover:shadow-lg transition flex flex-col items-center text-center group">
+                <div class="text-4xl mb-3">👥</div>
+                <h2 class="text-lg font-bold text-slate-800 group-hover:text-blue-600">Pacientes Cadastrados</h2>
+                <p class="text-sm text-slate-500 mt-2">Acessar lista de pacientes, telefones, CPFs e edição.</p>
+                <span class="mt-4 bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1.5 rounded-full">Acessar Módulo &rarr;</span>
+            </a>
+
+            <a href="/cadastros/medicos" class="bg-white p-6 rounded-xl shadow-md border hover:border-emerald-500 hover:shadow-lg transition flex flex-col items-center text-center group">
+                <div class="text-4xl mb-3">🩺</div>
+                <h2 class="text-lg font-bold text-slate-800 group-hover:text-emerald-600">Médicos Cadastrados</h2>
+                <p class="text-sm text-slate-500 mt-2">Acessar lista de médicos, especialidades e edição.</p>
+                <span class="mt-4 bg-emerald-50 text-emerald-600 text-xs font-bold px-3 py-1.5 rounded-full">Acessar Módulo &rarr;</span>
+            </a>
+
+            <a href="/cadastros/clinicas" class="bg-white p-6 rounded-xl shadow-md border hover:border-indigo-500 hover:shadow-lg transition flex flex-col items-center text-center group">
+                <div class="text-4xl mb-3">🏥</div>
+                <h2 class="text-lg font-bold text-slate-800 group-hover:text-indigo-600">Hospitais / Clínicas</h2>
+                <p class="text-sm text-slate-500 mt-2">Acessar lista de redes de saúde, modalidades e edição.</p>
+                <span class="mt-4 bg-indigo-50 text-indigo-600 text-xs font-bold px-3 py-1.5 rounded-full">Acessar Módulo &rarr;</span>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

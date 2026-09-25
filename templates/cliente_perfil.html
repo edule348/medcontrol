@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Perfil do Cliente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/crm" class="block px-4 py-2 rounded bg-slate-800 text-purple-400 font-semibold">📅 CRM - Gestão de Agendamentos</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Painel de Cadastros</a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Perfil do Paciente</h1>
+                <p class="text-sm text-slate-500">Dados cadastrais e histórico completo de atendimento.</p>
+            </div>
+            <a href="/crm" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-900">← Voltar para o CRM</a>
+        </div>
+
+        {% if cliente %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Dados Pessoais -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 md:col-span-1 space-y-3">
+                <h2 class="text-md font-bold text-slate-800 border-b pb-2">Informações Cadastrais</h2>
+                <div>
+                    <span class="text-xs text-slate-400 block">Nome Completo</span>
+                    <span class="font-bold text-slate-800 text-base">{{ cliente.nome_cliente }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 block">Telefone</span>
+                    <span class="text-slate-700 text-sm">{{ cliente.telefones }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 block">E-mail</span>
+                    <span class="text-slate-700 text-sm">{{ cliente.email or 'Não informado' }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 block">Documento (CPF)</span>
+                    <span class="text-slate-700 text-sm">{{ cliente.documento or 'Não informado' }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 block">Endereço</span>
+                    <span class="text-slate-700 text-xs">{{ cliente.endereco or 'Não informado' }}</span>
+                </div>
+            </div>
+
+            <!-- Histórico e Movimentações -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 md:col-span-2 space-y-4">
+                <h2 class="text-md font-bold text-slate-800 border-b pb-2">Histórico de Atendimentos & Movimentações CRM</h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b text-slate-600">
+                                <th class="p-2.5">Etapa / Status</th>
+                                <th class="p-2.5">Data / Hora</th>
+                                <th class="p-2.5">Médico / Especialidade</th>
+                                <th class="p-2.5">Local</th>
+                                <th class="p-2.5">Valor / Pagamento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in historico %}
+                            <tr class="border-b hover:bg-slate-50">
+                                <td class="p-2.5 font-bold">
+                                    {% if h.status_etapa == 'Agendamentos' %}
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Agendado</span>
+                                    {% elif h.status_etapa == 'Retorno' %}
+                                        <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Retorno</span>
+                                    {% elif h.status_etapa == 'Reagendamento' %}
+                                        <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded">Reagendado</span>
+                                    {% elif h.status_etapa == 'Cancelados' %}
+                                        <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded">Cancelado</span>
+                                    {% else %}
+                                        <span class="bg-slate-100 text-slate-800 px-2 py-0.5 rounded">{{ h.status_etapa }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-2.5">{{ h.data_consulta }} às {{ h.horario }}</td>
+                                <td class="p-2.5">Dr(a). {{ h.medico }}<br><span class="text-[10px] text-slate-400">{{ h.especialidade }}</span></td>
+                                <td class="p-2.5">{{ h.clinica_hospital }}</td>
+                                <td class="p-2.5 font-semibold text-slate-700">{{ h.valor_consulta }}<br><span class="text-[10px] text-slate-400">{{ h.tipo_pagamento }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-slate-400">Nenhum histórico registrado até o momento. O histórico será preenchido conforme o cliente for atendido.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white p-8 rounded-xl text-center text-slate-500">
+            Cliente não encontrado.
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

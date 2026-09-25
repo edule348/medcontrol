@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Editar Paciente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden">
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/cadastros/pacientes" class="block px-4 py-2 rounded bg-blue-600 text-white font-semibold">Voltar aos Pacientes</a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <h1 class="text-2xl font-bold mb-6 text-slate-800">Editar Paciente</h1>
+        <div class="bg-white p-8 rounded-lg shadow max-w-2xl w-full">
+            <form method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Nome Completo</label>
+                    <input type="text" name="nome" value="{{ paciente.nome }}" required class="w-full mt-1 p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">CPF</label>
+                    <input type="text" name="cpf" value="{{ paciente.cpf or '' }}" class="w-full mt-1 p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Telefones</label>
+                    <input type="text" name="telefones" value="{{ paciente.telefones }}" required class="w-full mt-1 p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">E-mail</label>
+                    <input type="email" name="email" value="{{ paciente.email or '' }}" class="w-full mt-1 p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Endereço Completo</label>
+                    <input type="text" name="endereco" value="{{ paciente.endereco }}" required class="w-full mt-1 p-2 border rounded">
+                </div>
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700">Salvar Alterações</button>
+                    <a href="/cadastros/pacientes" class="bg-gray-300 text-gray-700 px-6 py-3 rounded font-bold text-center flex items-center justify-center hover:bg-gray-400">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

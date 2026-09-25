@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Médicos Cadastrados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden">
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded bg-blue-600 text-white font-semibold">Painel de Cadastros</a>
+                {% if session.is_admin %}
+                <a href="/admin/usuarios" class="block px-4 py-2 rounded hover:bg-red-950 text-red-400 font-semibold">Gestão de Usuários (Admin)</a>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">🩺 Módulo de Médicos Cadastrados</h1>
+                <p class="text-sm text-slate-500">Gerenciamento exclusivo de médicos.</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="/cadastros" class="bg-slate-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-slate-700">&larr; Voltar ao Painel</a>
+                <a href="/medicos" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700">+ Novo Médico</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 text-sm">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+            <form method="GET" class="flex gap-2">
+                <input type="text" name="busca" value="{{ busca }}" placeholder="Pesquisar por nome ou especialidade..." class="flex-1 p-2 border rounded text-sm">
+                <button type="submit" class="bg-slate-800 text-white px-5 py-2 rounded text-sm font-bold hover:bg-slate-900">Pesquisar</button>
+                {% if busca %}
+                <a href="/cadastros/medicos" class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm flex items-center">Limpar</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse border border-slate-200 text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 border-b">
+                            <th class="p-2 border">Nome</th>
+                            <th class="p-2 border">Especialidade(s)</th>
+                            <th class="p-2 border">Telefone</th>
+                            <th class="p-2 border">Atendimento</th>
+                            <th class="p-2 border text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in medicos %}
+                        <tr class="border-b hover:bg-slate-50">
+                            <td class="p-2 border font-medium">{{ m.nome }}</td>
+                            <td class="p-2 border"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-semibold">{{ m.especialidade }}</span></td>
+                            <td class="p-2 border">{{ m.telefone }}</td>
+                            <td class="p-2 border">{{ m.tipo_atendimento }}</td>
+                            <td class="p-2 border text-center">
+                                <a href="/editar/medico/{{ m.id }}" class="bg-amber-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-amber-600">Editar</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="p-4 text-center text-slate-500 border">Nenhum médico encontrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

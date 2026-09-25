@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Agendar Retorno</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/crm" class="block px-4 py-2 rounded bg-slate-800 text-purple-400 font-semibold">📅 CRM - Gestão de Agendamentos</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Painel de Cadastros</a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow w-full">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h1 class="text-xl font-bold text-slate-800">🔄 Agendar Retorno de Paciente</h1>
+                <a href="/crm" class="text-sm bg-gray-200 text-gray-700 px-3 py-1.5 rounded font-semibold hover:bg-gray-300">Voltar ao CRM</a>
+            </div>
+
+            <!-- Dados Pré-preenchidos (Travados) -->
+            <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 text-sm space-y-2 text-blue-900">
+                <div><b>Paciente:</b> {{ crm_item.nome_cliente }} (CPF: {{ crm_item.documento }})</div>
+                <div><b>Médico:</b> Dr(a). {{ crm_item.medico }}</div>
+                <div><b>Especialidade:</b> {{ crm_item.especialidade }}</div>
+            </div>
+
+            <!-- Informações de Disponibilidade do Médico -->
+            <div class="mb-6 bg-slate-50 border p-4 rounded-lg text-xs space-y-1 text-slate-700">
+                <span class="font-bold block text-slate-800 mb-1">📅 Dias e Horários Disponíveis Cadastrados para este Médico:</span>
+                {% if medico_locais %}
+                    {% for l in medico_locais %}
+                    <div>• Dias: <b>{{ l.dias }}</b> | Horário: <b>{{ l.horario_inicio }} às {{ l.horario_fim }}</b> (Duração: {{ l.duracao_minutos }} min)</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-amber-600 font-semibold">Nenhum horário fixo cadastrado para este médico. Escolha qualquer data/horário abaixo.</div>
+                {% endif %}
+            </div>
+
+            <form id="formRetorno" method="POST" action="/crm/retorno/salvar/{{ crm_item.id }}" enctype="multipart/form-data" class="space-y-4" onsubmit="return validarAgenda(event)">
+                <input type="hidden" id="medico_id" value="{{ medico.id if medico else '' }}">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Selecione a Data e Horário do Retorno</label>
+                    <input type="datetime-local" id="data_hora" name="data_hora" required class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Valor da Consulta (R$)</label>
+                        <input type="text" name="valor" value="{{ crm_item.valor_consulta }}" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Forma de Pagamento</label>
+                        <select name="forma_pagamento" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                            <option value="Sem pagamento">Sem pagamento (Retorno Gratuito)</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Cartão">Cartão</option>
+                            <option value="PIX na Consulta">PIX na Consulta</option>
+                            <option value="PIX Antecipado">PIX Antecipado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Comprovante de Pagamento (Opcional)</label>
+                    <input type="file" name="comprovante" accept=".pdf, .jpg, .jpeg, .png" class="w-full mt-1 p-2 border rounded text-sm bg-gray-50">
+                </div>
+
+                <button type="submit" class="w-full bg-amber-600 text-white p-3 rounded font-bold hover:bg-amber-700 text-sm">Confirmar e Mover para aba Retorno</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let formValidado = false;
+
+        function validarAgenda(event) {
+            if (formValidado) return true;
+            event.preventDefault();
+
+            const medicoId = document.getElementById('medico_id').value;
+            const dataHora = document.getElementById('data_hora').value;
+
+            if (!medicoId || !dataHora) {
+                formValidado = true;
+                document.getElementById('formRetorno').submit();
+                return true;
+            }
+
+            fetch(`/api/verificar_agenda/${medicoId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data_hora: dataHora })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.atende) {
+                    let confirmar = confirm(`O médico não atende neste dia (${data.dia_semana}). Deseja marcar mesmo assim?`);
+                    if (confirmar) {
+                        formValidado = true;
+                        document.getElementById('formRetorno').submit();
+                    }
+                } else {
+                    formValidado = true;
+                    document.getElementById('formRetorno').submit();
+                }
+            })
+            .catch(err => {
+                formValidado = true;
+                document.getElementById('formRetorno').submit();
+            });
+
+            return false;
+        }
+    </script>
+</body>
+</html>

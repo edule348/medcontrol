@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Tela Inicial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded bg-slate-800 text-purple-400 font-semibold">Tela Inicial</a>
+                <a href="/crm" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">📅 CRM - Gestão de Agendamentos</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Painel de Cadastros</a>
+                {% if session.is_admin %}
+                <a href="/admin/usuarios" class="block px-4 py-2 rounded hover:bg-red-950 text-red-400 font-semibold">Gestão de Usuários (Admin)</a>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Painel de Agendamentos de Hoje</h1>
+                <p class="text-sm text-slate-500">Gerencie e realize novos agendamentos de forma rápida.</p>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-4 p-4 rounded-lg text-sm {% if category == 'danger' %}bg-red-100 text-red-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Grid Principal: Formulário e Consultas de Hoje -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Formulário de Novo Agendamento -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b">Nova Consulta</h2>
+                <form id="formAgendar" method="POST" action="/agendar" enctype="multipart/form-data" class="space-y-4 text-sm">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Paciente</label>
+                        <select name="paciente_id" required class="w-full p-2 border rounded-lg bg-slate-50">
+                            <option value="">Selecione o Paciente</option>
+                            {% for p in pacientes %}
+                            <option value="{{ p.id }}">{{ p.nome }} (CPF: {{ p.cpf }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Médico</label>
+                        <select id="medico_id" name="medico_id" required class="w-full p-2 border rounded-lg bg-slate-50">
+                            <option value="">Selecione o Médico</option>
+                            {% for m in medicos %}
+                            <option value="{{ m.id }}">{{ m.nome }} - {{ m.especialidade }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Data e Hora</label>
+                        <input type="datetime-local" id="data_hora" name="data_hora" required class="w-full p-2 border rounded-lg bg-slate-50">
+                        <small id="sugestao_horario" class="text-indigo-600 block mt-1 font-semibold"></small>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Valor (R$)</label>
+                            <input type="text" name="valor" placeholder="R$ 150,00" class="w-full p-2 border rounded-lg bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Pagamento</label>
+                            <select name="forma_pagamento" class="w-full p-2 border rounded-lg bg-slate-50">
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="Pix">Pix</option>
+                                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                <option value="Cartão de Débito">Cartão de Débito</option>
+                                <option value="Convênio">Convênio</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Comprovante (Opcional)</label>
+                        <input type="file" name="comprovante" class="w-full p-1 text-xs border rounded-lg bg-slate-50">
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg hover:bg-blue-700 transition">Confirmar Agendamento</button>
+                </form>
+            </div>
+
+            <!-- Lista de Consultas do Dia -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b">Consultas Agendadas para Hoje</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b text-slate-600">
+                                <th class="p-3">Horário</th>
+                                <th class="p-3">Paciente</th>
+                                <th class="p-3">Médico</th>
+                                <th class="p-3">Valor</th>
+                                <th class="p-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in consultas %}
+                            <tr class="border-b hover:bg-slate-50">
+                                <td class="p-3 font-semibold">{{ c.data_hora }}</td>
+                                <td class="p-3">{{ c.paciente_nome }}</td>
+                                <td class="p-3">{{ c.medico_nome }}</td>
+                                <td class="p-3">{{ c.valor }}</td>
+                                <td class="p-3"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-bold">{{ c.status }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-slate-400">Nenhuma consulta agendada para hoje.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const medicoSelect = document.getElementById('medico_id');
+        const dataHoraInput = document.getElementById('data_hora');
+        const sugestaoHorario = document.getElementById('sugestao_horario');
+        const formAgendar = document.getElementById('formAgendar');
+        let ignorarConflito = false;
+
+        medicoSelect.addEventListener('change', function() {
+            const medicoId = this.value;
+            if (!medicoId) {
+                sugestaoHorario.textContent = '';
+                return;
+            }
+            fetch(`/api/proximo_horario/${medicoId}`)
+                .then(res => res.json())
+                .then(data => {
+                    sugestaoHorario.textContent = `💡 Sugestão de próximo horário vago: ${data.horario}`;
+                });
+        });
+
+        formAgendar.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const medicoId = medicoSelect.value;
+            const dataHora = dataHoraInput.value;
+
+            if (!medicoId || !dataHora) {
+                formAgendar.submit();
+                return;
+            }
+
+            fetch(`/api/verificar_agenda/${medicoId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({data_hora: dataHora, ignorar_conflito: ignorarConflito})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.atende) {
+                    alert(`Atenção: O médico selecionado não atende neste dia da semana (${data.dia_semana}).`);
+                    ignorarConflito = false;
+                    return;
+                }
+
+                if (data.conflito) {
+                    if (confirm(data.mensagem)) {
+                        ignorarConflito = true;
+                        formAgendar.submit();
+                    } else {
+                        ignorarConflito = false;
+                    }
+                } else {
+                    ignorarConflito = false;
+                    formAgendar.submit();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
