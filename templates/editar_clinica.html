@@ -2,47 +2,66 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>MedControl - Editar Clínica / Hospital</title>
+    <title>MedControl - Editar Hospital / Clínica</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        function mascaraTelefone(input) {
+            let v = input.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.slice(0, 11);
+            if (v.length > 6) {
+                v = v.replace(/^(\d{2})(\d{4,5})(\d{4}).*/, '($1) $2-$3');
+            } else if (v.length > 2) {
+                v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+            } else if (v.length > 0) {
+                v = v.replace(/^(\d*)/, '($1');
+            }
+            input.value = v;
+        }
+    </script>
 </head>
-<body class="bg-gray-100 flex h-screen overflow-hidden">
+<body class="bg-slate-100 flex h-screen overflow-hidden">
     <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
         <div>
             <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
                 <span>🏥</span> MedControl
             </div>
             <nav class="p-4 space-y-2 text-sm">
-                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
-                <a href="/cadastros/clinicas" class="block px-4 py-2 rounded bg-indigo-600 text-white font-semibold">Voltar às Clínicas</a>
+                <a href="/cadastros?secao=locais" class="block px-4 py-2 rounded bg-slate-800 text-blue-400 font-semibold">&larr; Voltar aos Locais</a>
             </nav>
         </div>
     </div>
-
     <div class="flex-1 flex flex-col overflow-y-auto p-8">
-        <h1 class="text-2xl font-bold mb-6 text-slate-800">Editar Clínica / Hospital</h1>
-        <div class="bg-white p-8 rounded-lg shadow max-w-2xl w-full">
-            <form method="POST" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Nome da Clínica / Hospital</label>
-                    <input type="text" name="nome" value="{{ clinica.nome }}" required class="w-full mt-1 p-2 border rounded">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Modalidades (Ex: Particular, Convênio, SUS)</label>
-                    <input type="text" name="modalidade" value="{{ clinica.modalidade }}" required class="w-full mt-1 p-2 border rounded">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Telefone</label>
-                    <input type="text" name="telefone" value="{{ clinica.telefone }}" class="w-full mt-1 p-2 border rounded">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Endereço</label>
-                    <input type="text" name="endereco" value="{{ clinica.endereco }}" required class="w-full mt-1 p-2 border rounded">
-                </div>
-                <div class="flex gap-4">
-                    <button type="submit" class="flex-1 bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700">Salvar Alterações</button>
-                    <a href="/cadastros/clinicas" class="bg-gray-300 text-gray-700 px-6 py-3 rounded font-bold text-center flex items-center justify-center hover:bg-gray-400">Cancelar</a>
-                </div>
-            </form>
+        <div class="max-w-2xl mx-auto w-full">
+            <h1 class="text-2xl font-bold text-slate-800 mb-1">Editar Hospital / Clínica</h1>
+            <p class="text-sm text-slate-500 mb-6">Altere os dados necessários e salve as alterações.</p>
+            <div class="bg-white p-8 rounded-xl shadow border border-slate-200">
+                <form method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nome</label>
+                        <input type="text" name="nome" value="{{ clinica.nome }}" required class="w-full p-2.5 border border-slate-300 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail</label>
+                        <input type="email" name="email" value="{{ clinica.email or '' }}" class="w-full p-2.5 border border-slate-300 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Telefone</label>
+                        <input type="text" name="telefones[]" value="{{ clinica.telefone or '' }}" oninput="mascaraTelefone(this)" class="w-full p-2.5 border border-slate-300 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Endereço</label>
+                        <input type="text" name="rua" value="{{ clinica.endereco or '' }}" class="w-full p-2.5 border border-slate-300 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Modalidade</label>
+                        <input type="text" name="modalidades[]" value="{{ clinica.modalidade or '' }}" class="w-full p-2.5 border border-slate-300 rounded text-sm">
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded text-sm transition">Salvar Alterações</button>
+                        <a href="/cadastros?secao=locais" class="bg-gray-200 text-gray-700 px-6 py-3 rounded font-semibold text-sm flex items-center justify-center hover:bg-gray-300">Cancelar</a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </body>

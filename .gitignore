@@ -1,5 +1,5 @@
-database.db
-uploads/
+venv/
 __pycache__/
 *.pyc
+uploads/
 .DS_Store

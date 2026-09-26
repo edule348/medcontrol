@@ -4,6 +4,103 @@
     <meta charset="UTF-8">
     <title>MedControl - Tela Inicial</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        function buscarPacientes(termo) {
+            if (termo.length < 2) {
+                document.getElementById('paciente-dropdown').classList.add('hidden');
+                return;
+            }
+            fetch(`/api/buscar_paciente?termo=${encodeURIComponent(termo)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const dropdown = document.getElementById('paciente-dropdown');
+                    dropdown.innerHTML = '';
+                    if (data.length > 0) {
+                        dropdown.classList.remove('hidden');
+                        data.forEach(p => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 hover:bg-slate-100 cursor-pointer text-xs border-b';
+                            div.innerHTML = `<b>${p.nome}</b> - CPF: ${p.cpf || 'N/D'} | Tel: ${p.telefones}`;
+                            div.onclick = () => {
+                                document.getElementById('paciente_busca').value = p.nome;
+                                document.getElementById('paciente_id').value = p.id;
+                                dropdown.classList.add('hidden');
+                            };
+                            dropdown.appendChild(div);
+                        });
+                    } else {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+        }
+
+        function buscarMedicos(termo) {
+            if (termo.length < 2) {
+                document.getElementById('medico-dropdown').classList.add('hidden');
+                return;
+            }
+            fetch(`/api/buscar_medicos?termo=${encodeURIComponent(termo)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const dropdown = document.getElementById('medico-dropdown');
+                    dropdown.innerHTML = '';
+                    if (data.length > 0) {
+                        dropdown.classList.remove('hidden');
+                        data.forEach(m => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 hover:bg-slate-100 cursor-pointer text-xs border-b';
+                            div.innerHTML = `<b>${m.nome}</b> (${m.especialidade})`;
+                            div.onclick = () => {
+                                document.getElementById('medico_busca').value = `${m.nome} (${m.especialidade})`;
+                                document.getElementById('medico_id').value = m.id;
+                                dropdown.classList.add('hidden');
+                                carregarGradeHorarios(m.id);
+                            };
+                            dropdown.appendChild(div);
+                        });
+                    } else {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+        }
+
+        function carregarGradeHorarios(medicoId) {
+            const dataInput = document.getElementById('data_calendario').value;
+            const container = document.getElementById('grade-horarios');
+            if (!dataInput) {
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Selecione uma data ao lado.</p>';
+                return;
+            }
+            container.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Carregando horários...</p>';
+            
+            fetch(`/api/horarios_medico?medico_id=${medicoId}&data=${dataInput}`)
+                .then(res => res.json())
+                .then(data => {
+                    container.innerHTML = '';
+                    if (data.length === 0) {
+                        container.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Nenhum horário configurado para este médico.</p>';
+                        return;
+                    }
+                    data.forEach(h => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = `p-2 rounded text-xs font-bold transition border ${h.ocupado ? 'bg-red-100 text-red-700 border-red-300 cursor-not-allowed' : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'}`;
+                        btn.textContent = h.horario;
+                        if (h.ocupado) {
+                            btn.title = 'Horário Ocupado';
+                            btn.disabled = true;
+                        } else {
+                            btn.onclick = () => {
+                                document.getElementById('data_hora_oculta').value = h.data_hora_input;
+                                document.querySelectorAll('#grade-horarios button').forEach(b => b.classList.remove('ring-2', 'ring-blue-600'));
+                                btn.classList.add('ring-2', 'ring-blue-600');
+                            };
+                        }
+                        container.appendChild(btn);
+                    });
+                });
+        }
+    </script>
 </head>
 <body class="bg-slate-100 flex h-screen overflow-hidden">
     <!-- Sidebar -->
@@ -13,15 +110,12 @@
                 <span>🏥</span> MedControl
             </div>
             <nav class="p-4 space-y-2 text-sm">
-                <a href="/" class="block px-4 py-2 rounded bg-slate-800 text-purple-400 font-semibold">Tela Inicial</a>
+                <a href="/" class="block px-4 py-2 rounded bg-slate-800 text-white font-semibold">Tela Inicial</a>
                 <a href="/crm" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">📅 CRM - Gestão de Agendamentos</a>
                 <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
                 <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
                 <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
                 <a href="/cadastros" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Painel de Cadastros</a>
-                {% if session.is_admin %}
-                <a href="/admin/usuarios" class="block px-4 py-2 rounded hover:bg-red-950 text-red-400 font-semibold">Gestão de Usuários (Admin)</a>
-                {% endif %}
             </nav>
         </div>
         <div class="p-4 border-t border-slate-800 text-xs">
@@ -32,172 +126,133 @@
 
     <!-- Conteúdo Principal -->
     <div class="flex-1 flex flex-col overflow-y-auto p-8">
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-800">Painel de Agendamentos de Hoje</h1>
-                <p class="text-sm text-slate-500">Gerencie e realize novos agendamentos de forma rápida.</p>
-            </div>
-        </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="mb-4 p-4 rounded-lg text-sm {% if category == 'danger' %}bg-red-100 text-red-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">
-                {{ message }}
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
-        <!-- Grid Principal: Formulário e Consultas de Hoje -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Formulário de Novo Agendamento -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b">Nova Consulta</h2>
-                <form id="formAgendar" method="POST" action="/agendar" enctype="multipart/form-data" class="space-y-4 text-sm">
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Paciente</label>
-                        <select name="paciente_id" required class="w-full p-2 border rounded-lg bg-slate-50">
-                            <option value="">Selecione o Paciente</option>
-                            {% for p in pacientes %}
-                            <option value="{{ p.id }}">{{ p.nome }} (CPF: {{ p.cpf }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Médico</label>
-                        <select id="medico_id" name="medico_id" required class="w-full p-2 border rounded-lg bg-slate-50">
-                            <option value="">Selecione o Médico</option>
-                            {% for m in medicos %}
-                            <option value="{{ m.id }}">{{ m.nome }} - {{ m.especialidade }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Data e Hora</label>
-                        <input type="datetime-local" id="data_hora" name="data_hora" required class="w-full p-2 border rounded-lg bg-slate-50">
-                        <small id="sugestao_horario" class="text-indigo-600 block mt-1 font-semibold"></small>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Valor (R$)</label>
-                            <input type="text" name="valor" placeholder="R$ 150,00" class="w-full p-2 border rounded-lg bg-slate-50">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Pagamento</label>
-                            <select name="forma_pagamento" class="w-full p-2 border rounded-lg bg-slate-50">
-                                <option value="Dinheiro">Dinheiro</option>
-                                <option value="Pix">Pix</option>
-                                <option value="Cartão de Crédito">Cartão de Crédito</option>
-                                <option value="Cartão de Débito">Cartão de Débito</option>
-                                <option value="Convênio">Convênio</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Comprovante (Opcional)</label>
-                        <input type="file" name="comprovante" class="w-full p-1 text-xs border rounded-lg bg-slate-50">
-                    </div>
-
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg hover:bg-blue-700 transition">Confirmar Agendamento</button>
-                </form>
+        <div class="max-w-7xl mx-auto w-full">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Painel de Agendamentos</h1>
+                    <p class="text-sm text-slate-500">Selecione paciente, médico e escolha o horário disponível direto pelo calendário lateral.</p>
+                </div>
+                <div class="flex gap-3">
+                    {% if session.is_admin %}
+                    <a href="/admin/usuarios" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow transition flex items-center gap-1.5">
+                        <span>🛡️</span> Administrador
+                    </a>
+                    {% endif %}
+                    <a href="/crm" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow transition flex items-center gap-1.5">
+                        <span>📊</span> Acessar Módulo CRM
+                    </a>
+                </div>
             </div>
 
-            <!-- Lista de Consultas do Dia -->
-            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h2 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b">Consultas Agendadas para Hoje</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead>
-                            <tr class="bg-slate-50 border-b text-slate-600">
-                                <th class="p-3">Horário</th>
-                                <th class="p-3">Paciente</th>
-                                <th class="p-3">Médico</th>
-                                <th class="p-3">Valor</th>
-                                <th class="p-3">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for c in consultas %}
-                            <tr class="border-b hover:bg-slate-50">
-                                <td class="p-3 font-semibold">{{ c.data_hora }}</td>
-                                <td class="p-3">{{ c.paciente_nome }}</td>
-                                <td class="p-3">{{ c.medico_nome }}</td>
-                                <td class="p-3">{{ c.valor }}</td>
-                                <td class="p-3"><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-bold">{{ c.status }}</span></td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="5" class="p-6 text-center text-slate-400">Nenhuma consulta agendada para hoje.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 text-sm">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulário de Nova Consulta -->
+                <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+                    <h2 class="text-base font-bold text-slate-800 mb-4">Nova Consulta</h2>
+                    <form method="POST" action="/agendar" enctype="multipart/form-data" class="space-y-4">
+                        <div class="relative">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Paciente (CPF ou Nome)</label>
+                            <input type="text" id="paciente_busca" oninput="buscarPacientes(this.value)" placeholder="Digite para buscar paciente..." autocomplete="off" required class="w-full p-2.5 border rounded text-sm bg-slate-50">
+                            <input type="hidden" name="paciente_id" id="paciente_id">
+                            <div id="paciente-dropdown" class="absolute z-10 w-full bg-white border rounded shadow-lg hidden max-h-40 overflow-y-auto"></div>
+                        </div>
+
+                        <div class="relative">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Médico (Especialidade ou Nome)</label>
+                            <input type="text" id="medico_busca" oninput="buscarMedicos(this.value)" placeholder="Ex: cardio, pediatra..." autocomplete="off" required class="w-full p-2.5 border rounded text-sm bg-slate-50">
+                            <input type="hidden" name="medico_id" id="medico_id">
+                            <div id="medico-dropdown" class="absolute z-10 w-full bg-white border rounded shadow-lg hidden max-h-40 overflow-y-auto"></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Valor (R$)</label>
+                                <input type="text" name="valor" placeholder="R$ 150,00" class="w-full p-2.5 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Pagamento</label>
+                                <select name="forma_pagamento" class="w-full p-2.5 border rounded text-sm bg-white">
+                                    <option value="Dinheiro">Dinheiro</option>
+                                    <option value="PIX">PIX</option>
+                                    <option value="Cartão">Cartão</option>
+                                    <option value="Convênio">Convênio</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Comprovante (Opcional)</label>
+                            <input type="file" name="comprovante" accept=".pdf,.png,.jpg,.jpeg" class="w-full p-2 border rounded text-xs bg-slate-50">
+                        </div>
+
+                        <input type="hidden" name="data_hora" id="data_hora_oculta" required>
+
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-bold text-sm shadow transition">
+                            Confirmar Agendamento
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Grade de Horários e Calendário Lateral -->
+                <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-base font-bold text-slate-800">Agenda e Horários do Médico</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">Selecione um médico no formulário ao lado e escolha a data:</p>
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Data da Consulta</label>
+                        <input type="date" id="data_calendario" onchange="if(document.getElementById('medico_id').value) carregarGradeHorarios(document.getElementById('medico_id').value)" class="w-full p-2.5 border rounded text-sm bg-blue-50">
+                    </div>
+
+                    <div class="border rounded-lg p-3 bg-slate-50 min-h-[180px] max-h-[220px] overflow-y-auto">
+                        <div class="text-[11px] text-slate-500 mb-2 font-medium flex gap-3">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block"></span> Disponível</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-red-400 rounded-full inline-block"></span> Ocupado</span>
+                        </div>
+                        <div id="grade-horarios" class="grid grid-cols-3 gap-2">
+                            <p class="text-xs text-slate-400 text-center py-6 col-span-3">Selecione um médico e a data para abrir a grade.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Consultas de Hoje -->
+                <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+                    <h2 class="text-base font-bold text-slate-800 mb-4">Consultas de Hoje</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-slate-600 text-[11px] uppercase">
+                                    <th class="p-2">Horário</th>
+                                    <th class="p-2">Paciente</th>
+                                    <th class="p-2">Médico</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in consultas %}
+                                <tr class="border-b hover:bg-slate-50 text-xs">
+                                    <td class="p-2 font-semibold text-blue-600">{{ c.data_hora.split(' ')[1] }}</td>
+                                    <td class="p-2 font-bold text-slate-800">{{ c.paciente_nome }}</td>
+                                    <td class="p-2 text-slate-600">{{ c.medico_nome }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="p-6 text-center text-slate-400 text-xs">Nenhuma consulta hoje.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <script>
-        const medicoSelect = document.getElementById('medico_id');
-        const dataHoraInput = document.getElementById('data_hora');
-        const sugestaoHorario = document.getElementById('sugestao_horario');
-        const formAgendar = document.getElementById('formAgendar');
-        let ignorarConflito = false;
-
-        medicoSelect.addEventListener('change', function() {
-            const medicoId = this.value;
-            if (!medicoId) {
-                sugestaoHorario.textContent = '';
-                return;
-            }
-            fetch(`/api/proximo_horario/${medicoId}`)
-                .then(res => res.json())
-                .then(data => {
-                    sugestaoHorario.textContent = `💡 Sugestão de próximo horário vago: ${data.horario}`;
-                });
-        });
-
-        formAgendar.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const medicoId = medicoSelect.value;
-            const dataHora = dataHoraInput.value;
-
-            if (!medicoId || !dataHora) {
-                formAgendar.submit();
-                return;
-            }
-
-            fetch(`/api/verificar_agenda/${medicoId}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({data_hora: dataHora, ignorar_conflito: ignorarConflito})
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (!data.atende) {
-                    alert(`Atenção: O médico selecionado não atende neste dia da semana (${data.dia_semana}).`);
-                    ignorarConflito = false;
-                    return;
-                }
-
-                if (data.conflito) {
-                    if (confirm(data.mensagem)) {
-                        ignorarConflito = true;
-                        formAgendar.submit();
-                    } else {
-                        ignorarConflito = false;
-                    }
-                } else {
-                    ignorarConflito = false;
-                    formAgendar.submit();
-                }
-            });
-        });
-    </script>
 </body>
 </html>

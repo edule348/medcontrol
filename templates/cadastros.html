@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MedControl - Painel de Cadastros</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col justify-between">
+        <div>
+            <div class="p-5 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-2">
+                <span>🏥</span> MedControl
+            </div>
+            <nav class="p-4 space-y-2 text-sm">
+                <a href="/" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Tela Inicial</a>
+                <a href="/crm" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">📅 CRM - Gestão de Agendamentos</a>
+                <a href="/pacientes" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Pacientes</a>
+                <a href="/medicos" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Médicos</a>
+                <a href="/clinicas" class="block px-4 py-2 rounded hover:bg-slate-800 text-slate-300">Cadastro de Hospitais/Clínicas</a>
+                <a href="/cadastros" class="block px-4 py-2 rounded bg-slate-800 text-blue-400 font-semibold">Painel de Cadastros</a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs">
+            <span class="text-slate-400 block">Logado: <b>{{ session.username }}</b></span>
+            <a href="/logout" class="text-red-400 hover:underline mt-1 block">Sair</a>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="flex-1 flex flex-col overflow-y-auto p-8">
+        <div class="max-w-7xl mx-auto w-full">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800 mb-1">Painel Geral de Cadastros</h1>
+                    <p class="text-sm text-slate-500">Selecione uma das categorias abaixo para gerenciar e editar os registros.</p>
+                </div>
+                <div class="flex gap-2">
+                    <a href="/cadastros?secao=geral" class="px-4 py-2 rounded text-xs font-bold {{ 'bg-blue-600 text-white' if secao == 'geral' else 'bg-white text-slate-700 border' }}">Visão Geral</a>
+                    <a href="/cadastros?secao=pacientes" class="px-4 py-2 rounded text-xs font-bold {{ 'bg-blue-600 text-white' if secao == 'pacientes' else 'bg-white text-slate-700 border' }}">👥 Pacientes</a>
+                    <a href="/cadastros?secao=medicos" class="px-4 py-2 rounded text-xs font-bold {{ 'bg-blue-600 text-white' if secao == 'medicos' else 'bg-white text-slate-700 border' }}">🩺 Médicos por Especialidade</a>
+                    <a href="/cadastros?secao=locais" class="px-4 py-2 rounded text-xs font-bold {{ 'bg-blue-600 text-white' if secao == 'locais' else 'bg-white text-slate-700 border' }}">🏥 Hospitais e Clínicas</a>
+                </div>
+            </div>
+
+            {% if secao == 'geral' %}
+            <!-- Restaurados os 3 Cards de Acesso -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <a href="/cadastros?secao=medicos" class="bg-white p-8 rounded-xl shadow border hover:border-blue-500 transition flex flex-col items-center text-center group">
+                    <div class="text-5xl mb-4">🩺</div>
+                    <h2 class="text-xl font-bold text-slate-800 group-hover:text-blue-600">Cadastro de Médicos</h2>
+                    <p class="text-sm text-slate-500 mt-2">Visualize médicos segmentados por especialidade.</p>
+                    <span class="mt-6 bg-blue-50 text-blue-600 text-xs font-bold px-4 py-2 rounded-full">Acessar Médicos &rarr;</span>
+                </a>
+
+                <a href="/cadastros?secao=pacientes" class="bg-white p-8 rounded-xl shadow border hover:border-emerald-500 transition flex flex-col items-center text-center group">
+                    <div class="text-5xl mb-4">👥</div>
+                    <h2 class="text-xl font-bold text-slate-800 group-hover:text-emerald-600">Cadastro de Pacientes</h2>
+                    <p class="text-sm text-slate-500 mt-2">Consulte todos os pacientes e CPFs cadastrados.</p>
+                    <span class="mt-6 bg-emerald-50 text-emerald-600 text-xs font-bold px-4 py-2 rounded-full">Acessar Pacientes &rarr;</span>
+                </a>
+
+                <a href="/cadastros?secao=locais" class="bg-white p-8 rounded-xl shadow border hover:border-indigo-500 transition flex flex-col items-center text-center group">
+                    <div class="text-5xl mb-4">🏥</div>
+                    <h2 class="text-xl font-bold text-slate-800 group-hover:text-indigo-600">Hospitais e Clínicas</h2>
+                    <p class="text-sm text-slate-500 mt-2">Consulte centros segmentados entre Hospitais e Clínicas.</p>
+                    <span class="mt-6 bg-indigo-50 text-indigo-600 text-xs font-bold px-4 py-2 rounded-full">Acessar Locais &rarr;</span>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if secao == 'pacientes' %}
+            <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>👥</span> Lista de Todos os Pacientes Cadastrados
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b text-slate-600 text-xs uppercase">
+                                <th class="p-3">Nome</th>
+                                <th class="p-3">CPF</th>
+                                <th class="p-3">Telefones</th>
+                                <th class="p-3">E-mail</th>
+                                <th class="p-3">Endereço Completo</th>
+                                <th class="p-3 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pacientes %}
+                            <tr class="border-b hover:bg-slate-50">
+                                <td class="p-3 font-semibold text-slate-800">{{ p.nome }}</td>
+                                <td class="p-3 text-slate-600">{{ p.cpf or '-' }}</td>
+                                <td class="p-3 text-slate-600">{{ p.telefones }}</td>
+                                <td class="p-3 text-slate-600">{{ p.email or '-' }}</td>
+                                <td class="p-3 text-slate-600 text-xs">{{ p.endereco }}</td>
+                                <td class="p-3 text-center">
+                                    <a href="/editar/paciente/{{ p.id }}" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs font-bold transition">Editar</a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" class="p-6 text-center text-slate-400">Nenhum paciente cadastrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if secao == 'medicos' %}
+            <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>🩺</span> Médicos Segmentados por Especialidade
+                </h2>
+                
+                {% for especialidade, lista_medicos in medicos_por_especialidade.items() %}
+                <div class="mb-6 last:mb-0">
+                    <h3 class="text-sm font-bold text-blue-600 uppercase bg-blue-50 px-3 py-1.5 rounded mb-2 border-l-4 border-blue-600">
+                        Especialidade: {{ especialidade }} ({{ lista_medicos|length }})
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-slate-600 text-xs uppercase">
+                                    <th class="p-2.5">Nome do Médico</th>
+                                    <th class="p-2.5">Telefone</th>
+                                    <th class="p-2.5">Tipo de Atendimento</th>
+                                    <th class="p-2.5 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in lista_medicos %}
+                                <tr class="border-b hover:bg-slate-50">
+                                    <td class="p-2.5 font-semibold text-slate-800">{{ m.nome }}</td>
+                                    <td class="p-2.5 text-slate-600">{{ m.telefone or '-' }}</td>
+                                    <td class="p-2.5 text-slate-600">
+                                        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">{{ m.tipo_atendimento }}</span>
+                                    </td>
+                                    <td class="p-2.5 text-center">
+                                        <a href="/editar/medico/{{ m.id }}" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs font-bold transition">Editar</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-slate-400 text-sm text-center py-4">Nenhum médico cadastrado.</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if secao == 'locais' %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Hospitais -->
+                <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🏥</span> Segmento: Hospitais
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-slate-600 text-xs uppercase">
+                                    <th class="p-3">Nome</th>
+                                    <th class="p-3">Modalidade</th>
+                                    <th class="p-3">Telefone</th>
+                                    <th class="p-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in hospitais %}
+                                <tr class="border-b hover:bg-slate-50">
+                                    <td class="p-3 font-semibold text-slate-800">{{ h.nome }}</td>
+                                    <td class="p-3"><span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">{{ h.modalidade }}</span></td>
+                                    <td class="p-3 text-slate-600 text-xs">{{ h.telefone }}</td>
+                                    <td class="p-3 text-center">
+                                        <a href="/editar/clinica/{{ h.id }}" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs font-bold transition">Editar</a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="p-6 text-center text-slate-400">Nenhum hospital cadastrado.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Clínicas -->
+                <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🏨</span> Segmento: Clínicas
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-slate-600 text-xs uppercase">
+                                    <th class="p-3">Nome</th>
+                                    <th class="p-3">Modalidade</th>
+                                    <th class="p-3">Telefone</th>
+                                    <th class="p-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in clinicas %}
+                                <tr class="border-b hover:bg-slate-50">
+                                    <td class="p-3 font-semibold text-slate-800">{{ c.nome }}</td>
+                                    <td class="p-3"><span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded">{{ c.modalidade }}</span></td>
+                                    <td class="p-3 text-slate-600 text-xs">{{ c.telefone }}</td>
+                                    <td class="p-3 text-center">
+                                        <a href="/editar/clinica/{{ c.id }}" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs font-bold transition">Editar</a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="p-6 text-center text-slate-400">Nenhuma clínica cadastrada.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</body>
+</html>
