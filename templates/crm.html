@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medcontrol - CRM Gestão de Agenda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        let dadosMedicoReagendar = null;
+        let anoReagendar = new Date().getFullYear();
+        let mesReagendar = new Date().getMonth();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const flashMsgs = document.querySelectorAll('.flash-message-data');
+            flashMsgs.forEach(el => {
+                mostrarToast(el.getAttribute('data-msg'), el.getAttribute('data-tipo'));
+            });
+        });
+
+        // Pop-up genérico de confirmação
+        function confirmarAcaoGenerica(url, mensagem) {
+            const modal = document.getElementById('modal-confirmacao-geral');
+            const texto = document.getElementById('texto-confirmacao-geral');
+            const btnSim = document.getElementById('btn-sim-geral');
+            
+            texto.textContent = mensagem;
+            btnSim.onclick = function() {
+                let form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url;
+                document.body.appendChild(form);
+                form.submit();
+            };
+            modal.classList.remove('hidden');
+        }
+
+        function fecharModalGenerico() {
+            document.getElementById('modal-confirmacao-geral').classList.add('hidden');
+        }
+
+        // Validação "Paciente do Dia" vs Data Atual
+        function verificarDiaAtendimento(id, dataConsultaStr, urlDestino) {
+            let hojeStr = "{{ hoje }}";
+            if (dataConsultaStr !== hojeStr) {
+                const modal = document.getElementById('modal-confirmacao-geral');
+                const texto = document.getElementById('texto-confirmacao-geral');
+                const btnSim = document.getElementById('btn-sim-geral');
+
+                texto.textContent = "Paciente não está no dia do atendimento. Você gostaria de confirmar a consulta?";
+                btnSim.onclick = function() {
+                    let form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = urlDestino;
+                    document.body.appendChild(form);
+                    form.submit();
+                };
+                modal.classList.remove('hidden');
+            } else {
+                confirmarAcaoGenerica(urlDestino, "Deseja realmente marcar este paciente como Atendido?");
+            }
+        }
+
+        // Abrir Modal de Reagendar com Calendário do Médico
+        function abrirModalReagendar(id, tipoUrl, medicoNome) {
+            const modal = document.getElementById('modal-reagendar');
+            const form = document.getElementById('form-reagendar');
+            form.action = `/crm/${tipoUrl}/${id}`;
+            
+            // Limpar campos
+            document.getElementById('input-reagendar-data').value = '';
+            document.getElementById('input-reagendar-hora').value = '';
+            document.getElementById('calendario-reagendar-container').innerHTML = '<span class="text-slate-400 text-center p-4">Carregando calendário do Dr(a). ' + medicoNome + '...</span>';
+
+            modal.classList.remove('hidden');
+
+            // Buscar agenda do médico
+            fetch(`/api/medico_agenda?medico=${encodeURIComponent(medicoNome)}`)
+                .then(res => res.json())
+                .then(data => {
+                    dadosMedicoReagendar = data;
+                    let hoje = new Date();
+                    anoReagendar = hoje.getFullYear();
+                    mesReagendar = hoje.getMonth();
+                    renderizarCalendarioModal(data, anoReagendar, mesReagendar);
+                });
+        }
+
+        function fecharModalReagendar() {
+            document.getElementById('modal-reagendar').classList.add('hidden');
+        }
+
+        const diasSemanaMap = { 'Domingo': 0, 'Segunda': 1, 'Terca': 2, 'Quarta': 3, 'Quinta': 4, 'Sexta': 5, 'Sabado': 6 };
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        function mudarMesReagendar(delta) {
+            mesReagendar += delta;
+            if (mesReagendar > 11) {
+                mesReagendar = 0;
+                anoReagendar++;
+            } else if (mesReagendar < 0) {
+                mesReagendar = 11;
+                anoReagendar--;
+            }
+            if (dadosMedicoReagendar) {
+                renderizarCalendarioModal(dadosMedicoReagendar, anoReagendar, mesReagendar);
+            }
+        }
+
+        // Renderiza o calendário no modal
+        function renderizarCalendarioModal(medico, ano, mes) {
+            const container = document.getElementById('calendario-reagendar-container');
+            if (!container) return;
+
+            if (!medico.locais || medico.locais.length === 0) {
+                container.innerHTML = '<span class="text-red-500 text-center p-4">Nenhum horário cadastrado para este médico.</span>';
+                return;
+            }
+
+            let diasAtendimentoSet = new Set();
+            medico.locais.forEach(l => {
+                let partes = l.dias.split(',').map(d => d.trim());
+                partes.forEach(d => {
+                    let dNorm = d.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                    for (let [k, v] of Object.entries(diasSemanaMap)) {
+                        if (k.toLowerCase().startsWith(dNorm.slice(0, 3))) {
+                            diasAtendimentoSet.add(v);
+                        }
+                    }
+                });
+            });
+
+            let primeiroDiaIndex = new Date(ano, mes, 1).getDay();
+            let totalDiasMes = new Date(ano, mes + 1, 0).getDate();
+
+            let html = `<div class="space-y-2 w-full">`;
+            html += `<div class="flex items-center justify-between bg-slate-100 p-1.5 rounded">`;
+            html += `<button type="button" onclick="mudarMesReagendar(-1)" class="bg-white hover:bg-slate-200 px-2 py-1 rounded font-bold text-slate-700 shadow-sm"><i class="fa-solid fa-chevron-left"></i></button>`;
+            html += `<span class="font-bold text-slate-800 text-xs">${nomesMeses[mes]} / ${ano}</span>`;
+            html += `<button type="button" onclick="mudarMesReagendar(1)" class="bg-white hover:bg-slate-200 px-2 py-1 rounded font-bold text-slate-700 shadow-sm"><i class="fa-solid fa-chevron-right"></i></button>`;
+            html += `</div>`;
+
+            html += `<div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] text-slate-500">`;
+            ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach(d => html += `<div>${d}</div>`);
+            html += `</div>`;
+
+            html += `<div class="grid grid-cols-7 gap-1 text-[11px]">`;
+            for (let i = 0; i < primeiroDiaIndex; i++) {
+                html += `<div></div>`;
+            }
+
+            for (let dia = 1; dia <= totalDiasMes; dia++) {
+                let dObj = new Date(ano, mes, dia);
+                let diaSemana = dObj.getDay();
+                let mesPad = String(mes + 1).padStart(2, '0');
+                let diaPad = String(dia).padStart(2, '0');
+                let isoDate = `${ano}-${mesPad}-${diaPad}`;
+
+                let atendeDia = diasAtendimentoSet.has(diaSemana);
+
+                if (atendeDia) {
+                    html += `<button type="button" onclick="selecionarDiaModal('${isoDate}')" class="bg-emerald-500 hover:bg-emerald-600 text-white p-1.5 rounded font-bold flex flex-col items-center justify-center shadow-sm transition" title="Disponível">
+                                <span>${dia}</span>
+                             </button>`;
+                } else {
+                    html += `<div class="bg-red-200 text-red-800 p-1.5 rounded font-bold flex flex-col items-center justify-center opacity-80 cursor-not-allowed text-[11px]" title="Indisponível">
+                                <span>${dia}</span>
+                             </div>`;
+                }
+            }
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        // Ao clicar no dia verde do modal, mostra os horários
+        function selecionarDiaModal(dataIso) {
+            if (!dadosMedicoReagendar) return;
+            const container = document.getElementById('calendario-reagendar-container');
+            
+            document.getElementById('input-reagendar-data').value = dataIso;
+
+            let tempoMin = dadosMedicoReagendar.tempo_consulta || 30;
+            let localObj = dadosMedicoReagendar.locais[0];
+            let [hInicio, mInicio] = localObj.hora_inicio.split(':').map(Number);
+            let [hFim, mFim] = localObj.hora_fim.split(':').map(Number);
+
+            let slots = [];
+            let atualMin = hInicio * 60 + mInicio;
+            let fimMin = hFim * 60 + mFim;
+
+            while (atualMin + tempoMin <= fimMin) {
+                let h = String(Math.floor(atualMin / 60)).padStart(2, '0');
+                let m = String(atualMin % 60).padStart(2, '0');
+                slots.push(`${h}:${m}`);
+                atualMin += tempoMin;
+            }
+
+            let formatoBrData = dataIso.split('-').reverse().join('/');
+            let html = `<div class="space-y-3 w-full">`;
+            html += `<div class="flex items-center justify-between border-b pb-1">`;
+            html += `<span class="font-bold text-slate-800">Horários em ${formatoBrData}</span>`;
+            html += `<button type="button" onclick="renderizarCalendarioModal(dadosMedicoReagendar, anoReagendar, mesReagendar)" class="text-blue-600 hover:underline text-[10px] font-bold"><i class="fa-solid fa-arrow-left mr-1"></i> Voltar dias</button>`;
+            html += `</div>`;
+            html += `<div class="text-[10px] text-slate-500 flex justify-around"><span class="text-emerald-600 font-bold">■ Vago</span><span class="text-red-600 font-bold">■ Ocupado</span></div>`;
+            html += `<div class="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">`;
+
+            slots.forEach(horaStr => {
+                let chaveOcupado = `${dataIso} ${horaStr}`;
+                let ocupado = dadosMedicoReagendar.ocupados.includes(chaveOcupado);
+
+                if (ocupado) {
+                    html += `<div class="bg-red-100 border border-red-300 text-red-700 p-1.5 rounded text-center font-bold text-xs cursor-not-allowed flex flex-col items-center justify-center shadow-sm" title="Ocupado">
+                                <span>${horaStr}</span>
+                                <i class="fa-solid fa-lock text-[8px] mt-0.5"></i>
+                             </div>`;
+                } else {
+                    html += `<button type="button" onclick="selecionarHorarioModal('${horaStr}')" class="bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded text-center font-bold text-xs shadow transition flex flex-col items-center justify-center">
+                                <span>${horaStr}</span>
+                                <i class="fa-solid fa-check text-[8px] mt-0.5"></i>
+                             </button>`;
+                }
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        function selecionarHorarioModal(horaStr) {
+            document.getElementById('input-reagendar-hora').value = horaStr;
+            mostrarToast(`Horário ${horaStr} selecionado!`, 'success');
+        }
+
+        function abrirModalCancelar(id, nomePaciente) {
+            const modal = document.getElementById('modal-cancelar');
+            const texto = document.getElementById('texto-cancelar');
+            const form = document.getElementById('form-cancelar');
+            
+            texto.textContent = `Você está prestes a cancelar a consulta do paciente ${nomePaciente}. Deseja confirmar?`;
+            form.action = `/crm/atualizar_status/${id}/Cancelado`;
+            modal.classList.remove('hidden');
+        }
+
+        function fecharModalCancelar() {
+            document.getElementById('modal-cancelar').classList.add('hidden');
+        }
+
+        function mostrarToast(mensagem, tipo = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            let corClasses = tipo === 'error' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white';
+            toast.className = `${corClasses} text-xs font-bold px-4 py-2.5 rounded-lg shadow-lg flex items-center space-x-2 transition-all duration-300 transform translate-y-10 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${tipo === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} text-sm"></i><span>${mensagem}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 50);
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</head>
+<body class="bg-[#f8fafc] flex flex-col h-screen m-0 select-none overflow-hidden font-sans">
+    
+    <div id="toast-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none"></div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message-data hidden" data-msg="{{ message }}" data-tipo="{{ category }}"></div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <header class="w-full h-14 bg-white shadow-sm flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-staff-snake text-lg text-blue-600"></i>
+            <span class="text-xl font-bold text-slate-800 tracking-wide">Medcontrol</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <form action="/crm" method="GET" class="relative">
+                <input type="text" name="busca" value="{{ busca }}" placeholder="Pesquisar paciente, CPF ou Dr(a)..." class="w-72 border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 font-semibold">
+                <button type="submit" class="absolute right-2.5 top-2 text-slate-400 hover:text-blue-600"><i class="fa-solid fa-magnifying-glass text-xs"></i></button>
+            </form>
+            <a href="/" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-plus text-[10px]"></i><span>Agendar Consulta</span>
+            </a>
+            <div class="flex items-center space-x-1.5 text-slate-700 text-sm font-semibold border-l pl-4">
+                <i class="fa-solid fa-circle-user text-lg text-slate-600"></i>
+                <span>{{ session.get('username') | upper }}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Menu Lateral -->
+        <aside class="w-64 bg-[#f0f4f8] border-r border-slate-200 flex flex-col justify-between shrink-0">
+            <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <a href="/" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-house w-4 text-slate-500"></i><span>Início</span></a>
+                <a href="/crm" class="flex items-center space-x-3 px-3 py-2.5 rounded bg-blue-100 text-blue-950 font-bold"><i class="fa-solid fa-calendar-days w-4 text-blue-600"></i><span>CRM - Gestão de agenda</span></a>
+                <a href="/pacientes" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-plus w-4 text-slate-500"></i><span>Cadastrar pacientes</span></a>
+                
+                {% if session.get('role') == 'admin' %}
+                <a href="/medicos/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-doctor w-4 text-slate-500"></i><span>Cadastrar médicos</span></a>
+                <a href="/especialidades" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-stethoscope w-4 text-slate-500"></i><span>Especialidades</span></a>
+                <a href="/hospitais/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-hospital w-4 text-slate-500"></i><span>Cadastrar Hospitais/clinicas</span></a>
+                <a href="/cadastros" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-address-book w-4 text-slate-500"></i><span>Contatos</span></a>
+                <a href="/procedimentos" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-syringe w-4 text-slate-500"></i><span>Agendar Procedimentos</span></a>
+                <a href="/admin/usuarios" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-gears w-4 text-slate-500"></i><span>Acesso do administrador</span></a>
+                {% endif %}
+            </nav>
+            <div class="p-4 border-t border-slate-200 bg-[#e4ecf4]">
+                <a href="/logout" class="block w-full bg-[#52799e] hover:bg-[#436280] text-white text-center font-semibold py-2 rounded shadow text-xs">Sair</a>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal Kanban -->
+        <main class="flex-1 p-6 overflow-x-auto bg-[#f8fafc] flex gap-4">
+            
+            {% set colunas = [
+                ('PACIENTE AGENDADO', 'Agendado', 'border-blue-200 bg-blue-50/60', 'bg-blue-100 text-blue-900 border-blue-200'),
+                ('EM CONFIRMAÇÃO', 'Em Confirmação', 'border-amber-200 bg-amber-50/60', 'bg-amber-100 text-amber-900 border-amber-200'),
+                ('PACIENTE CONFIRMADO', 'Confirmado', 'border-[#859f3d]/60 bg-[#859f3d]/15', 'bg-[#859f3d]/30 text-[#455825] border-[#859f3d]/50'),
+                ('PACIENTE DO DIA', 'Paciente do Dia', 'border-indigo-200 bg-indigo-50/60', 'bg-indigo-100 text-indigo-900 border-indigo-200'),
+                ('PACIENTES ATENDIDOS', 'Atendido', 'border-purple-200 bg-purple-50/60', 'bg-purple-100 text-purple-900 border-purple-200'),
+                ('NÃO COMPARECEU', 'Nao Compareceu', 'border-orange-200 bg-orange-50/60', 'bg-orange-100 text-orange-900 border-orange-200'),
+                ('RETORNO', 'Retorno', 'border-teal-200 bg-teal-50/60', 'bg-teal-100 text-teal-900 border-teal-200'),
+                ('CANCELADO', 'Cancelado', 'border-rose-200 bg-rose-50/60', 'bg-rose-100 text-rose-900 border-rose-200')
+            ] %}
+
+            {% for titulo_col, status_col, css_col, css_card in colunas %}
+            <div class="w-72 rounded-lg shadow-sm border {{ css_col }} flex flex-col shrink-0">
+                <div class="p-3 border-b text-center font-bold text-slate-800 text-xs tracking-wide bg-white/90 rounded-t-lg shadow-sm">
+                    {{ titulo_col }}
+                </div>
+                <div class="p-3 flex-1 overflow-y-auto space-y-3">
+                    {% for ag in agendamentos %}
+                        {% if ag.status == status_col %}
+                        <div class="border rounded-lg p-3 shadow-sm hover:shadow transition space-y-2 text-xs relative {{ css_card }}">
+                            
+                            <div class="flex items-center justify-between">
+                                <span class="bg-white/80 px-2 py-0.5 rounded text-[10px] font-bold uppercase shadow-sm">
+                                    {{ ag.tipo_atendimento or 'Consulta' }}
+                                </span>
+                                <span class="text-[10px] font-bold uppercase opacity-80">{{ ag.especialidade or 'Clínico Geral' }}</span>
+                            </div>
+
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-sm">{{ ag.paciente }}</h4>
+                                <div class="flex items-center space-x-1 mt-0.5 opacity-90">
+                                    <i class="fa-solid fa-user-doctor text-[10px]"></i>
+                                    <span>{{ ag.medico }}</span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center space-x-1.5 text-[11px] bg-white/70 p-1.5 rounded font-semibold shadow-sm">
+                                <i class="fa-regular fa-calendar"></i>
+                                <span>
+                                    {% if ag.data_consulta %}
+                                        {% set partes = ag.data_consulta.split('-') %}
+                                        {% if partes|length == 3 %}
+                                            {{ partes[2] }}/{{ partes[1] }}/{{ partes[0] }}
+                                        {% else %}
+                                            {{ ag.data_consulta }}
+                                        {% endif %}
+                                    {% endif %} 
+                                    às {{ ag.hora_consulta }}
+                                </span>
+                            </div>
+
+                            {% if ag.justificativa and ag.status == 'Cancelado' %}
+                            <div class="bg-rose-100 border border-rose-300 text-rose-900 p-2 rounded text-[11px]">
+                                <b class="block font-bold">Motivo:</b> {{ ag.justificativa }}
+                            </div>
+                            {% endif %}
+
+                            <!-- Ações por Status -->
+                            <div class="pt-2 border-t border-black/10 flex flex-wrap gap-1.5">
+                                {% if ag.status == 'Agendado' %}
+                                    <button type="button" onclick="confirmarAcaoGenerica('/crm/atualizar_status/{{ ag.id }}/Em Confirmação', 'Deseja mover para Em Confirmação?')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Confirmar</button>
+                                    <button type="button" onclick="abrirModalReagendar({{ ag.id }}, 'reagendar', '{{ ag.medico }}')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Reagendar</button>
+                                    <button type="button" onclick="abrirModalCancelar({{ ag.id }}, '{{ ag.paciente }}')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Cancelar</button>
+                                
+                                {% elif ag.status == 'Em Confirmação' %}
+                                    <button type="button" onclick="confirmarAcaoGenerica('/crm/atualizar_status/{{ ag.id }}/Confirmado', 'Deseja confirmar o atendimento deste paciente?')" class="bg-[#556b2f] hover:bg-[#455825] text-white font-bold px-2 py-1 rounded text-[10px] shadow">Paciente Confirmado</button>
+                                    <button type="button" onclick="abrirModalReagendar({{ ag.id }}, 'reagendar', '{{ ag.medico }}')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Reagendar</button>
+                                    <button type="button" onclick="abrirModalCancelar({{ ag.id }}, '{{ ag.paciente }}')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Cancelar</button>
+                                
+                                {% elif ag.status == 'Confirmado' %}
+                                    <button type="button" onclick="confirmarAcaoGenerica('/crm/atualizar_status/{{ ag.id }}/Paciente do Dia', 'Mover para Paciente do Dia?')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Para Paciente do Dia</button>
+                                    <button type="button" onclick="abrirModalReagendar({{ ag.id }}, 'reagendar', '{{ ag.medico }}')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Reagendar</button>
+                                    <button type="button" onclick="abrirModalCancelar({{ ag.id }}, '{{ ag.paciente }}')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Cancelar</button>
+
+                                {% elif ag.status == 'Paciente do Dia' %}
+                                    <button type="button" onclick="verificarDiaAtendimento({{ ag.id }}, '{{ ag.data_consulta }}', '/crm/atualizar_status/{{ ag.id }}/Atendido')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Atendido</button>
+                                    <button type="button" onclick="confirmarAcaoGenerica('/crm/atualizar_status/{{ ag.id }}/Nao Compareceu', 'Marcar paciente como Não Compareceu?')" class="bg-orange-600 hover:bg-orange-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Faltou</button>
+                                    <button type="button" onclick="abrirModalReagendar({{ ag.id }}, 'reagendar', '{{ ag.medico }}')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Reagendar</button>
+                                    <button type="button" onclick="abrirModalCancelar({{ ag.id }}, '{{ ag.paciente }}')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Cancelar</button>
+                                
+                                {% elif ag.status == 'Atendido' %}
+                                    <button type="button" onclick="abrirModalReagendar({{ ag.id }}, 'agendar_retorno', '{{ ag.medico }}')" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Marcar Retorno</button>
+                                
+                                {% elif ag.status == 'Retorno' %}
+                                    <button type="button" onclick="verificarDiaAtendimento({{ ag.id }}, '{{ ag.data_consulta }}', '/crm/atualizar_status/{{ ag.id }}/Atendido')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-2 py-1 rounded text-[10px] shadow">Atendido</button>
+                                {% endif %}
+                            </div>
+
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+        </main>
+    </div>
+
+    <!-- Modal Confirmação Geral -->
+    <div id="modal-confirmacao-geral" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96 text-xs space-y-4">
+            <h3 class="font-bold text-slate-800 text-sm border-b pb-2 flex items-center space-x-2">
+                <i class="fa-solid fa-circle-question text-blue-600 text-base"></i>
+                <span>Confirmação de Ação</span>
+            </h3>
+            <p id="texto-confirmacao-geral" class="text-slate-700 font-semibold leading-relaxed"></p>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button type="button" onclick="fecharModalGenerico()" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded">Não</button>
+                <button type="button" id="btn-sim-geral" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow">Sim, Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Reagendar / Retorno com Calendário Interativo -->
+    <div id="modal-reagendar" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-[420px] text-xs space-y-4">
+            <h3 class="font-bold text-slate-800 text-sm border-b pb-2">Reagendar / Agendar Retorno</h3>
+            
+            <form id="form-reagendar" method="POST" class="space-y-3">
+                <!-- Inputs ocultos ou visíveis de data e hora selecionados -->
+                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded border border-slate-200">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Data:</label>
+                        <input type="date" id="input-reagendar-data" name="data" required class="w-full border border-slate-300 rounded p-1.5 bg-white font-semibold">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Horário:</label>
+                        <input type="time" id="input-reagendar-hora" name="hora" required class="w-full border border-slate-300 rounded p-1.5 bg-white font-semibold">
+                    </div>
+                </div>
+
+                <!-- Calendário do Médico no Modal -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Selecione o dia e horário disponível do médico:</label>
+                    <div id="calendario-reagendar-container" class="border border-slate-200 rounded p-2 bg-slate-50 flex flex-col items-center justify-center min-h-[220px]">
+                        <!-- Carregado via JS -->
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t">
+                    <button type="button" onclick="fecharModalReagendar()" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Cancelar -->
+    <div id="modal-cancelar" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96 text-xs space-y-4">
+            <h3 class="font-bold text-rose-700 text-sm border-b pb-2 flex items-center space-x-2">
+                <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
+                <span>Cancelar Consulta</span>
+            </h3>
+            <p id="texto-cancelar" class="text-slate-800 font-semibold"></p>
+            <form id="form-cancelar" method="POST" class="space-y-3">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Motivo do Cancelamento:</label>
+                    <textarea name="justificativa" rows="3" placeholder="Digite a justificativa..." required class="w-full border border-slate-300 rounded p-2"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="fecharModalCancelar()" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2 rounded">Voltar</button>
+                    <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 rounded shadow">Confirmar Cancelamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

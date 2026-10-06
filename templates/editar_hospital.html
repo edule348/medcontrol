@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medcontrol - Editar Hospital / Clínica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        function buscarCepHospital() {
+            let cep = document.getElementById('cep_h').value.replace(/\D/g, '');
+            if (cep.length === 8) {
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.erro) {
+                            document.getElementById('rua_h').value = data.logradouro;
+                            document.getElementById('bairro_h').value = data.bairro;
+                            document.getElementById('cidade_h').value = data.localidade + ' - ' + data.uf;
+                        }
+                    });
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#f8fafc] flex flex-col h-screen m-0 select-none overflow-hidden font-sans">
+    <header class="w-full h-14 bg-white shadow-sm flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-staff-snake text-lg text-blue-600"></i>
+            <span class="text-xl font-bold text-slate-800">Medcontrol</span>
+        </div>
+        <div class="flex items-center space-x-3 text-slate-700 text-sm font-semibold">
+            <span>{{ session.get('username') }}</span>
+        </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+        <aside class="w-64 bg-[#f0f4f8] border-r border-slate-200 flex flex-col justify-between shrink-0">
+            <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <a href="/cadastros/hospitais" class="flex items-center space-x-3 px-3 py-2.5 rounded bg-blue-100 text-blue-950 font-bold"><i class="fa-solid fa-arrow-left w-4 text-blue-600"></i><span>Voltar aos Hospitais</span></a>
+            </nav>
+        </aside>
+        <main class="flex-1 p-8 overflow-y-auto max-w-2xl mx-auto space-y-6">
+            <h2 class="font-bold text-slate-800 text-base uppercase border-b pb-2">Editar Cadastro de Hospital / Clínica</h2>
+            <form action="/hospitais/editar/{{ hospital.id }}" method="POST" class="bg-white p-6 rounded shadow-sm border border-slate-200 space-y-4 text-xs">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Tipo:</label>
+                        <select name="tipo" class="w-full border rounded p-2 bg-white">
+                            <option value="Hospital" {% if hospital.tipo == 'Hospital' %}selected{% endif %}>Hospital</option>
+                            <option value="Clínica" {% if hospital.tipo == 'Clínica' %}selected{% endif %}>Clínica</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Nome:</label>
+                        <input type="text" name="nome" value="{{ hospital.nome }}" required class="w-full border rounded p-2 bg-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Telefone:</label>
+                        <input type="text" name="telefone" value="{{ hospital.telefone }}" class="w-full border rounded p-2 bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">E-mail:</label>
+                        <input type="email" name="email" value="{{ hospital.email }}" class="w-full border rounded p-2 bg-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">CEP:</label>
+                        <input type="text" id="cep_h" name="cep" value="{{ hospital.cep }}" onblur="buscarCepHospital()" class="w-full border rounded p-2 bg-white">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block font-bold text-slate-700 mb-1">Rua / Logradouro:</label>
+                        <input type="text" id="rua_h" name="rua" value="{{ hospital.rua }}" class="w-full border rounded p-2 bg-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Número:</label>
+                        <input type="text" name="numero" value="{{ hospital.numero }}" class="w-full border rounded p-2 bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Bairro:</label>
+                        <input type="text" id="bairro_h" name="bairro" value="{{ hospital.bairro }}" class="w-full border rounded p-2 bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Cidade / Estado:</label>
+                        <input type="text" id="cidade_h" name="cidade_estado" value="{{ hospital.cidade_estado }}" class="w-full border rounded p-2 bg-white">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-2 pt-4">
+                    <a href="/cadastros/hospitais" class="bg-slate-400 hover:bg-slate-500 text-white font-bold px-4 py-2 rounded">Cancelar</a>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded">Salvar Alterações</button>
+                </div>
+            </form>
+        </main>
+    </div>
+</body>
+</html>

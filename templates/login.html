@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema Médico - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-[#5a738e] flex flex-col justify-between h-screen m-0 select-none overflow-hidden font-sans">
+    
+    <header class="w-full h-12 bg-gradient-to-b from-[#708ba8] via-[#4d647d] to-[#3a4d60] shadow-md flex items-center justify-center border-b border-[#2c3a4a]">
+        <div class="flex items-center space-x-2 text-white font-bold tracking-wider text-sm drop-shadow">
+            <i class="fa-solid fa-staff-snake text-base text-blue-200"></i>
+            <span>Sistema Médico</span>
+        </div>
+    </header>
+
+    <main class="flex flex-1 flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 rounded shadow-2xl w-96 border border-slate-300 relative">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="mb-4 p-2 bg-red-100 text-red-700 text-xs rounded text-center font-semibold">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="space-y-4 text-xs font-semibold">
+                <div class="flex items-center border border-slate-300 rounded overflow-hidden bg-white shadow-inner">
+                    <div class="bg-slate-800 text-white px-3 py-3 flex items-center justify-center w-10">
+                        <i class="fa-solid fa-user text-sm"></i>
+                    </div>
+                    <input type="text" name="username" placeholder="login:" required class="w-full p-2.5 outline-none text-slate-700 placeholder-slate-400 bg-transparent">
+                </div>
+
+                <div class="flex items-center border border-slate-300 rounded overflow-hidden bg-white shadow-inner">
+                    <div class="bg-slate-800 text-white px-3 py-3 flex items-center justify-center w-10">
+                        <i class="fa-solid fa-lock text-sm"></i>
+                    </div>
+                    <input type="password" name="password" placeholder="senha:" required class="w-full p-2.5 outline-none text-slate-700 placeholder-slate-400 bg-transparent">
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-b from-[#6b85a3] via-[#4d647d] to-[#364757] hover:from-[#5a738e] hover:to-[#2c3a4a] text-white font-bold py-2.5 rounded shadow text-center tracking-wide uppercase transition-all">
+                    Log In
+                </button>
+            </form>
+
+            <div class="mt-4 text-center">
+                <a href="#" class="text-[11px] text-[#4d647d] hover:underline font-medium">esqueci minha senha</a>
+            </div>
+        </div>
+
+        <div class="mt-4 text-[11px] text-slate-200 tracking-wide font-medium">
+            Sistema desenvolvido por Eduardo Leal
+        </div>
+    </main>
+
+    <footer class="w-full py-2 px-6 text-right text-[10px] text-slate-300 tracking-wider font-semibold">
+        v1.0
+    </footer>
+</body>
+</html>

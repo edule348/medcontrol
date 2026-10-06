@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medcontrol - Lista de Hospitais e Clínicas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-[#f8fafc] flex flex-col h-screen m-0 select-none overflow-hidden font-sans">
+    <header class="w-full h-14 bg-white shadow-sm flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-staff-snake text-lg text-blue-600"></i>
+            <span class="text-xl font-bold text-slate-800">Medcontrol</span>
+        </div>
+        <div class="flex items-center space-x-3 text-slate-700 text-sm font-semibold">
+            <span>{{ session.get('username') }}</span>
+        </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+        <aside class="w-64 bg-[#f0f4f8] border-r border-slate-200 flex flex-col justify-between shrink-0">
+            <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <a href="/cadastros" class="flex items-center space-x-3 px-3 py-2.5 rounded bg-blue-100 text-blue-950 font-bold"><i class="fa-solid fa-arrow-left w-4 text-blue-600"></i><span>Voltar aos Segmentos</span></a>
+            </nav>
+        </aside>
+        <main class="flex-1 p-6 overflow-y-auto space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="font-bold text-slate-800 text-sm uppercase">Hospitais e Clínicas Cadastrados</h2>
+                <a href="/cadastros" class="bg-slate-400 hover:bg-slate-500 text-white font-bold px-3 py-1.5 rounded text-xs">Voltar</a>
+            </div>
+            <div class="bg-white rounded shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-100 text-slate-700 uppercase">
+                        <tr>
+                            <th class="p-3">Tipo</th>
+                            <th class="p-3">Nome</th>
+                            <th class="p-3">Cidade/UF</th>
+                            <th class="p-3 text-center">Ações (Perfil / Agenda / Editar)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        {% for h in hospitais %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-3 font-bold text-blue-600">{{ h.tipo }}</td>
+                            <td class="p-3 font-bold text-slate-800">{{ h.nome }}</td>
+                            <td class="p-3 text-slate-600">{{ h.cidade_estado or 'Não informada' }}</td>
+                            <td class="p-3 text-center space-x-1">
+                                <a href="/hospitais/perfil/{{ h.id }}" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-bold text-[10px]">Perfil</a>
+                                <a href="/hospitais/agenda/{{ h.id }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded font-bold text-[10px]">Agenda</a>
+                                <a href="/hospitais/editar/{{ h.id }}" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded font-bold text-[10px]">Editar</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhum hospital ou clínica cadastrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medcontrol - Agendamento de Consultas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        let dadosMedicoAtual = null;
+        let anoAtual = new Date().getFullYear();
+        let mesAtual = new Date().getMonth(); // 0 a 11
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Autocomplete de Pacientes
+            const inputPaciente = document.getElementById('input-paciente');
+            const listaPacientes = document.getElementById('lista-sugestoes-pacientes');
+
+            if (inputPaciente) {
+                inputPaciente.addEventListener('input', function() {
+                    let termo = this.value.trim();
+                    if (termo.length < 1) {
+                        listaPacientes.classList.add('hidden');
+                        return;
+                    }
+                    fetch(`/api/pacientes?q=${encodeURIComponent(termo)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            listaPacientes.innerHTML = '';
+                            if (data.length > 0) {
+                                data.forEach(nome => {
+                                    let div = document.createElement('div');
+                                    div.className = 'p-2 hover:bg-slate-100 cursor-pointer text-xs font-semibold text-slate-700';
+                                    div.textContent = nome;
+                                    div.addEventListener('click', () => {
+                                        inputPaciente.value = nome;
+                                        listaPacientes.classList.add('hidden');
+                                    });
+                                    listaPacientes.appendChild(div);
+                                });
+                                listaPacientes.classList.remove('hidden');
+                            } else {
+                                listaPacientes.classList.add('hidden');
+                            }
+                        });
+                });
+            }
+
+            // Mudar Especialidade -> Carrega Médicos
+            const selectEspecialidade = document.getElementById('select-especialidade');
+            const selectMedico = document.getElementById('select-medico');
+
+            if (selectEspecialidade && selectMedico) {
+                selectEspecialidade.addEventListener('change', function() {
+                    let esp = this.value;
+                    selectMedico.innerHTML = '<option value="">Carregando médicos...</option>';
+                    selectMedico.disabled = true;
+                    limparCalendario();
+
+                    if (!esp) {
+                        selectMedico.innerHTML = '<option value="">Selecione a especialidade primeiro...</option>';
+                        return;
+                    }
+
+                    fetch(`/api/medicos?especialidade=${encodeURIComponent(esp)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            selectMedico.innerHTML = '<option value="">Selecione o médico...</option>';
+                            if (data.length > 0) {
+                                data.forEach(nomeMedico => {
+                                    let opt = document.createElement('option');
+                                    opt.value = nomeMedico;
+                                    opt.textContent = nomeMedico;
+                                    selectMedico.appendChild(opt);
+                                });
+                                selectMedico.disabled = false;
+                            } else {
+                                selectMedico.innerHTML = '<option value="">Nenhum médico para esta especialidade</option>';
+                            }
+                        });
+                });
+            }
+
+            // Mudar Médico -> Carrega Agenda Mensal Interativa
+            if (selectMedico) {
+                selectMedico.addEventListener('change', function() {
+                    let medicoNome = this.value;
+                    if (!medicoNome) {
+                        limparCalendario();
+                        return;
+                    }
+
+                    fetch(`/api/medico_agenda?medico=${encodeURIComponent(medicoNome)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            dadosMedicoAtual = data;
+                            let hoje = new Date();
+                            anoAtual = hoje.getFullYear();
+                            mesAtual = hoje.getMonth();
+                            renderizarCalendarioMensal(data, anoAtual, mesAtual);
+                        });
+                });
+            }
+
+            // Toast flutuante inferior central
+            const flashMsgs = document.querySelectorAll('.flash-message-data');
+            flashMsgs.forEach(el => {
+                mostrarToast(el.getAttribute('data-msg'), el.getAttribute('data-tipo'));
+            });
+        });
+
+        function limparCalendario() {
+            dadosMedicoAtual = null;
+            const container = document.getElementById('conteudo-calendario');
+            if (container) {
+                container.innerHTML = '<span class="text-slate-400 text-center p-6">Selecione a especialidade e o médico para visualizar o calendário.</span>';
+            }
+            const sugestaoBox = document.getElementById('sugestao-horario');
+            if (sugestaoBox) {
+                sugestaoBox.textContent = 'Selecione o médico';
+            }
+        }
+
+        const diasSemanaMap = { 'Domingo': 0, 'Segunda': 1, 'Terca': 2, 'Quarta': 3, 'Quinta': 4, 'Sexta': 5, 'Sabado': 6 };
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        function mudarMes(delta) {
+            mesAtual += delta;
+            if (mesAtual > 11) {
+                mesAtual = 0;
+                anoAtual++;
+            } else if (mesAtual < 0) {
+                mesAtual = 11;
+                anoAtual--;
+            }
+            if (dadosMedicoAtual) {
+                renderizarCalendarioMensal(dadosMedicoAtual, anoAtual, mesAtual);
+            }
+        }
+
+        // Renderiza o Calendário Mensal Completo em Grade
+        function renderizarCalendarioMensal(medico, ano, mes) {
+            const container = document.getElementById('conteudo-calendario');
+            const sugestaoBox = document.getElementById('sugestao-horario');
+            if (!container) return;
+
+            if (!medico.locais || medico.locais.length === 0) {
+                container.innerHTML = '<span class="text-slate-400 text-center p-6">Nenhum local ou horário cadastrado para este médico.</span>';
+                if (sugestaoBox) sugestaoBox.textContent = 'Sem horários cadastrados';
+                return;
+            }
+
+            let diasAtendimentoSet = new Set();
+            medico.locais.forEach(l => {
+                let partes = l.dias.split(',').map(d => d.trim());
+                partes.forEach(d => {
+                    let dNorm = d.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                    for (let [k, v] of Object.entries(diasSemanaMap)) {
+                        if (k.toLowerCase().startsWith(dNorm.slice(0, 3))) {
+                            diasAtendimentoSet.add(v);
+                        }
+                    }
+                });
+            });
+
+            let primeiroDiaIndex = new Date(ano, mes, 1).getDay();
+            let totalDiasMes = new Date(ano, mes + 1, 0).getDate();
+
+            let html = `<div class="space-y-2 w-full">`;
+            html += `<div class="font-bold text-slate-800 text-left border-b pb-1">Dr(a). ${medico.nome}</div>`;
+            
+            // Cabeçalho de Navegação de Meses
+            html += `<div class="flex items-center justify-between bg-slate-100 p-1.5 rounded">`;
+            html += `<button type="button" onclick="mudarMes(-1)" class="bg-white hover:bg-slate-200 px-2 py-1 rounded font-bold text-slate-700 shadow-sm"><i class="fa-solid fa-chevron-left"></i></button>`;
+            html += `<span class="font-bold text-slate-800 text-xs">${nomesMeses[mes]} / ${ano}</span>`;
+            html += `<button type="button" onclick="mudarMes(1)" class="bg-white hover:bg-slate-200 px-2 py-1 rounded font-bold text-slate-700 shadow-sm"><i class="fa-solid fa-chevron-right"></i></button>`;
+            html += `</div>`;
+
+            // Grade da Semana
+            html += `<div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] text-slate-500 pt-1">`;
+            ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach(d => html += `<div>${d}</div>`);
+            html += `</div>`;
+
+            // Grade de Dias do Mês
+            html += `<div class="grid grid-cols-7 gap-1 text-[11px]">`;
+
+            // Dias vazios antes do dia 1
+            for (let i = 0; i < primeiroDiaIndex; i++) {
+                html += `<div></div>`;
+            }
+
+            let hojeStr = new Date().toISOString().split('T')[0];
+
+            for (let dia = 1; dia <= totalDiasMes; dia++) {
+                let dObj = new Date(ano, mes, dia);
+                let diaSemana = dObj.getDay();
+                let mesPad = String(mes + 1).padStart(2, '0');
+                let diaPad = String(dia).padStart(2, '0');
+                let isoDate = `${ano}-${mesPad}-${diaPad}`;
+
+                let atendeDia = diasAtendimentoSet.has(diaSemana);
+
+                if (atendeDia) {
+                    // Verde (Disponível)
+                    html += `<button type="button" onclick="selecionarDia('${isoDate}')" class="bg-emerald-500 hover:bg-emerald-600 text-white p-1 rounded font-bold flex flex-col items-center justify-center shadow-sm transition" title="Disponível">
+                                <span>${dia}</span>
+                             </button>`;
+                } else {
+                    // Vermelho (Indisponível / Médico não atende)
+                    html += `<div class="bg-red-200 text-red-800 p-1 rounded font-bold flex flex-col items-center justify-center opacity-80 cursor-not-allowed" title="Indisponível">
+                                <span>${dia}</span>
+                             </div>`;
+                }
+            }
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+
+            if (sugestaoBox && medico.locais.length > 0) {
+                let p = medico.locais[0];
+                sugestaoBox.textContent = `${p.dias} das ${p.hora_inicio} às ${p.hora_fim} (${p.local})`;
+            }
+        }
+
+        // Ao clicar num dia verde disponível, abre os horários (vagos verde, ocupados vermelho)
+        function selecionarDia(dataIso) {
+            if (!dadosMedicoAtual) return;
+            const container = document.getElementById('conteudo-calendario');
+            
+            const inputData = document.querySelector('input[name="data"]');
+            if (inputData) inputData.value = dataIso;
+
+            let tempoMin = dadosMedicoAtual.tempo_consulta || 30;
+            let localObj = dadosMedicoAtual.locais[0];
+            let [hInicio, mInicio] = localObj.hora_inicio.split(':').map(Number);
+            let [hFim, mFim] = localObj.hora_fim.split(':').map(Number);
+
+            let slots = [];
+            let atualMin = hInicio * 60 + mInicio;
+            let fimMin = hFim * 60 + mFim;
+
+            while (atualMin + tempoMin <= fimMin) {
+                let h = String(Math.floor(atualMin / 60)).padStart(2, '0');
+                let m = String(atualMin % 60).padStart(2, '0');
+                slots.push(`${h}:${m}`);
+                atualMin += tempoMin;
+            }
+
+            let formatoBrData = dataIso.split('-').reverse().join('/');
+            let html = `<div class="space-y-3 w-full">`;
+            html += `<div class="flex items-center justify-between border-b pb-1">`;
+            html += `<span class="font-bold text-slate-800">Horários em ${formatoBrData}</span>`;
+            html += `<button type="button" onclick="renderizarCalendarioMensal(dadosMedicoAtual, anoAtual, mesAtual)" class="text-blue-600 hover:underline text-[10px] font-bold"><i class="fa-solid fa-arrow-left mr-1"></i> Voltar calendário</button>`;
+            html += `</div>`;
+            html += `<div class="text-[10px] text-slate-500 flex justify-around"><span class="text-emerald-600 font-bold">■ Vago</span><span class="text-red-600 font-bold">■ Ocupado</span></div>`;
+            html += `<div class="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">`;
+
+            slots.forEach(horaStr => {
+                let chaveOcupado = `${dataIso} ${horaStr}`;
+                let ocupado = dadosMedicoAtual.ocupados.includes(chaveOcupado);
+
+                if (ocupado) {
+                    html += `<div class="bg-red-100 border border-red-300 text-red-700 p-2 rounded text-center font-bold text-xs cursor-not-allowed flex flex-col items-center justify-center shadow-sm" title="Horário Ocupado">
+                                <span>${horaStr}</span>
+                                <i class="fa-solid fa-lock text-[9px] mt-0.5"></i>
+                             </div>`;
+                } else {
+                    html += `<button type="button" onclick="selecionarHorario('${dataIso}', '${horaStr}')" class="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded text-center font-bold text-xs shadow transition flex flex-col items-center justify-center">
+                                <span>${horaStr}</span>
+                                <i class="fa-solid fa-check text-[9px] mt-0.5"></i>
+                             </button>`;
+                }
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        function selecionarHorario(dataIso, horaStr) {
+            const inputData = document.querySelector('input[name="data"]');
+            const inputHora = document.querySelector('input[name="hora"]');
+            if (inputData) inputData.value = dataIso;
+            if (inputHora) inputHora.value = horaStr;
+            mostrarToast(`Horário ${horaStr} selecionado!`, 'success');
+        }
+
+        function mostrarToast(mensagem, tipo = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            let corClasses = tipo === 'error' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white';
+
+            toast.className = `${corClasses} text-xs font-bold px-4 py-2.5 rounded-lg shadow-lg flex items-center space-x-2 transition-all duration-300 transform translate-y-10 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${tipo === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} text-sm"></i><span>${mensagem}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 50);
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</head>
+<body class="bg-[#f8fafc] flex flex-col h-screen m-0 select-none overflow-hidden font-sans">
+    
+    <div id="toast-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none"></div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message-data hidden" data-msg="{{ message }}" data-tipo="{{ category }}"></div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <header class="w-full h-14 bg-white shadow-sm flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-staff-snake text-lg text-blue-600"></i>
+            <span class="text-xl font-bold text-slate-800 tracking-wide">Medcontrol</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Versão Oficial</span>
+            <div class="flex items-center space-x-1.5 text-slate-700 text-sm font-semibold">
+                <i class="fa-solid fa-circle-user text-lg text-slate-600"></i>
+                <span>{{ session.get('username') | upper }}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Menu Lateral -->
+        <aside class="w-64 bg-[#f0f4f8] border-r border-slate-200 flex flex-col justify-between shrink-0">
+            <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <a href="/" class="flex items-center space-x-3 px-3 py-2.5 rounded bg-blue-100 text-blue-950 font-bold"><i class="fa-solid fa-house w-4 text-blue-600"></i><span>Início</span></a>
+                <a href="/crm" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-calendar-days w-4 text-slate-500"></i><span>CRM - Gestão de agenda</span></a>
+                <a href="/pacientes" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-plus w-4 text-slate-500"></i><span>Cadastrar pacientes</span></a>
+                
+                {% if session.get('role') == 'admin' %}
+                <a href="/medicos/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-doctor w-4 text-slate-500"></i><span>Cadastrar médicos</span></a>
+                <a href="/especialidades" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-stethoscope w-4 text-slate-500"></i><span>Especialidades</span></a>
+                <a href="/hospitais/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-hospital w-4 text-slate-500"></i><span>Cadastrar Hospitais/clinicas</span></a>
+                <a href="/cadastros" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-address-book w-4 text-slate-500"></i><span>Contatos</span></a>
+                <a href="/procedimentos" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-syringe w-4 text-slate-500"></i><span>Agendar Procedimentos</span></a>
+                <a href="/admin/usuarios" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-gears w-4 text-slate-500"></i><span>Acesso do administrador</span></a>
+                {% endif %}
+            </nav>
+            <div class="p-4 border-t border-slate-200 bg-[#e4ecf4]">
+                <a href="/logout" class="block w-full bg-[#52799e] hover:bg-[#436280] text-white text-center font-semibold py-2 rounded shadow text-xs">Sair</a>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="flex-1 p-6 overflow-y-auto bg-[#f8fafc] flex gap-6">
+            
+            <!-- Formulário de Agendamento (Esquerda) -->
+            <div class="flex-1 bg-white p-6 rounded-lg shadow-sm border border-slate-200 text-xs flex flex-col justify-between">
+                <div>
+                    <h2 class="font-bold text-slate-800 text-sm uppercase border-b pb-2 mb-4">Agendamento de Consultas</h2>
+
+                    <form action="/agendar" method="POST" class="space-y-4">
+                        <div class="relative">
+                            <label class="block font-bold text-slate-700 mb-1">Paciente:</label>
+                            <input type="text" id="input-paciente" name="paciente" placeholder="Digite para buscar paciente" autocomplete="off" required class="w-full border border-slate-300 rounded p-2 font-semibold">
+                            <div id="lista-sugestoes-pacientes" class="absolute left-0 right-0 bg-white border border-slate-200 rounded shadow-md mt-1 hidden z-20 max-h-40 overflow-y-auto"></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">Especialidade:</label>
+                                <select id="select-especialidade" name="especialidade" required class="w-full border border-slate-300 rounded p-2 bg-white font-semibold">
+                                    <option value="">Selecione a especialidade...</option>
+                                    {% for esp in especialidades %}
+                                    <option value="{{ esp.nome }}">{{ esp.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">Médico:</label>
+                                <select id="select-medico" name="medico" required disabled class="w-full border border-slate-300 rounded p-2 bg-slate-50 font-semibold">
+                                    <option value="">Selecione a especialidade primeiro...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">Dia:</label>
+                                <input type="date" name="data" required class="w-full border border-slate-300 rounded p-2">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">Hora:</label>
+                                <input type="time" name="hora" required class="w-full border border-slate-300 rounded p-2">
+                            </div>
+                        </div>
+
+                        <!-- Sugestão de dia e hora disponível -->
+                        <div class="bg-blue-50 border border-blue-200 p-2.5 rounded text-blue-900 flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                                <span>Sugestão de próximo dia e hora disponível: <b id="sugestao-horario">Selecione o médico</b></span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">Valor R$:</label>
+                                <input type="text" name="valor" placeholder="0,00" class="w-full border border-slate-300 rounded p-2">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">Tipo de pagamento:</label>
+                                <select name="pagamento" class="w-full border border-slate-300 rounded p-2 bg-white">
+                                    <option>Pix</option>
+                                    <option>Dinheiro</option>
+                                    <option>Cartão de Crédito</option>
+                                    <option>Cartão de Débito</option>
+                                    <option>Convênio</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3 pt-3">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded shadow">Agendar Consulta</button>
+                            <button type="reset" class="bg-slate-300 hover:bg-slate-400 text-slate-800 font-bold px-4 py-2.5 rounded" onclick="limparCalendario()">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Painel Direito (Calendário Mensal e Próximas Consultas) -->
+            <div class="w-96 flex flex-col space-y-4">
+                
+                <!-- Calendário Visual Interativo Mensal -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex-1 flex flex-col justify-between text-xs">
+                    <h3 class="font-bold text-slate-700 uppercase border-b pb-2 mb-2">CALENDÁRIO COM DIAS E HORÁRIOS DISPONÍVEIS</h3>
+                    <div id="conteudo-calendario" class="flex-1 flex flex-col items-center justify-center text-slate-400 text-center p-4 border border-dashed rounded bg-slate-50">
+                        Selecione a especialidade e o médico para visualizar o calendário.
+                    </div>
+                </div>
+
+                <!-- Próximas Consultas -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 text-xs">
+                    <h3 class="font-bold text-slate-700 uppercase border-b pb-2 mb-2">Próximas Consultas</h3>
+                    <div class="overflow-x-auto max-h-44 overflow-y-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-slate-500 border-b">
+                                    <th class="pb-1.5">Paciente</th>
+                                    <th class="pb-1.5">Data/Hora</th>
+                                    <th class="pb-1.5">Médico</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for ag in agendamentos %}
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-1.5 font-semibold text-slate-700">{{ ag.paciente }}</td>
+                                    <td class="py-1.5 text-slate-600">{{ ag.data_consulta }} {{ ag.hora_consulta }}</td>
+                                    <td class="py-1.5 text-slate-600">{{ ag.medico }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="py-4 text-center text-slate-400">Nenhuma consulta agendada.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+</body>
+</html>

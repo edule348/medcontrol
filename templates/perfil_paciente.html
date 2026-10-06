@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medcontrol - Tela 8: Perfil de Paciente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-[#f8fafc] flex flex-col h-screen m-0 select-none overflow-hidden font-sans">
+    
+    <header class="w-full h-14 bg-white shadow-sm flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-staff-snake text-lg text-blue-600"></i>
+            <span class="text-xl font-bold text-slate-800 tracking-wide">Medcontrol</span>
+        </div>
+        <div class="flex items-center space-x-3 text-slate-700 text-sm font-semibold">
+            <div class="flex items-center space-x-1.5">
+                <i class="fa-solid fa-circle-user text-lg text-slate-600"></i>
+                <span>{{ session.get('username') }}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <aside class="w-64 bg-[#f0f4f8] border-r border-slate-200 flex flex-col justify-between shrink-0">
+            <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <a href="/" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-house w-4 text-slate-500"></i><span>Início</span></a>
+                <a href="/crm" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-calendar-days w-4 text-slate-500"></i><span>CRM - Gestão de agenda</span></a>
+                <a href="/pacientes" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-plus w-4 text-slate-500"></i><span>Cadastrar pacientes</span></a>
+                
+                {% if session.get('role') == 'admin' %}
+                <a href="/medicos/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-doctor w-4 text-slate-500"></i><span>Cadastrar médicos</span></a>
+                <a href="/hospitais/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-hospital w-4 text-slate-500"></i><span>Cadastrar Hospitais/clinicas</span></a>
+                <a href="/cadastros" class="flex items-center space-x-3 px-3 py-2.5 rounded bg-blue-100 text-blue-950 font-bold"><i class="fa-solid fa-address-book w-4 text-blue-600"></i><span>Contatos</span></a>
+                <a href="/procedimentos" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-syringe w-4 text-slate-500"></i><span>Agendar Procedimentos</span></a>
+                <a href="/admin/usuarios" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-gears w-4 text-slate-500"></i><span>Acesso do administrador</span></a>
+                {% endif %}
+            </nav>
+            <div class="p-4 border-t border-slate-200 bg-[#e4ecf4]">
+                <a href="/logout" class="block w-full bg-[#52799e] hover:bg-[#436280] text-white text-center font-semibold py-2 rounded shadow text-xs">Sair</a>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-8 overflow-y-auto">
+            <div class="max-w-4xl mx-auto space-y-6">
+                
+                <div class="bg-white p-6 rounded shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold shadow-inner">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div>
+                            <span class="bg-blue-50 text-blue-700 font-bold text-[10px] px-2 py-0.5 rounded border border-blue-200 uppercase">Tela 8 - Perfil do Paciente</span>
+                            <h2 class="text-lg font-bold text-slate-800 mt-1">{{ paciente.nome }}</h2>
+                            <p class="text-slate-500 text-xs">CPF: {{ paciente.cpf or 'Não informado' }}</p>
+                        </div>
+                    </div>
+                    <div class="space-x-2">
+                        <a href="/pacientes/agenda/{{ paciente.id }}" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded shadow text-xs">
+                            <i class="fa-solid fa-calendar mr-1"></i> Ver Agenda (Tela 7)
+                        </a>
+                        <a href="/cadastros" class="bg-slate-500 hover:bg-slate-600 text-white font-bold px-3 py-2 rounded shadow text-xs">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded shadow-sm border border-slate-200 space-y-3 text-xs">
+                        <h3 class="font-bold text-slate-800 text-sm pb-2 border-b border-slate-100 uppercase">Dados Pessoais</h3>
+                        <div class="flex justify-between py-1 border-b border-slate-50"><span class="font-bold text-slate-600">Telefone:</span><span class="text-slate-800">{{ paciente.telefone or '-' }}</span></div>
+                        <div class="flex justify-between py-1 border-b border-slate-50"><span class="font-bold text-slate-600">E-mail:</span><span class="text-slate-800">{{ paciente.email or '-' }}</span></div>
+                        <div class="flex justify-between py-1"><span class="font-bold text-slate-600">Referência:</span><span class="text-slate-800">{{ paciente.referencia or '-' }}</span></div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded shadow-sm border border-slate-200 space-y-3 text-xs">
+                        <h3 class="font-bold text-slate-800 text-sm pb-2 border-b border-slate-100 uppercase">Endereço</h3>
+                        <div class="flex justify-between py-1 border-b border-slate-50"><span class="font-bold text-slate-600">CEP:</span><span class="text-slate-800">{{ paciente.cep or '-' }}</span></div>
+                        <div class="flex justify-between py-1 border-b border-slate-50"><span class="font-bold text-slate-600">Logradouro:</span><span class="text-slate-800">{{ paciente.rua }}, nº {{ paciente.numero }}</span></div>
+                        <div class="flex justify-between py-1 border-b border-slate-50"><span class="font-bold text-slate-600">Bairro:</span><span class="text-slate-800">{{ paciente.bairro or '-' }}</span></div>
+                        <div class="flex justify-between py-1"><span class="font-bold text-slate-600">Cidade/UF:</span><span class="text-slate-800">{{ paciente.cidade_estado or '-' }}</span></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</body>
+</html>

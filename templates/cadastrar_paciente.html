@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medcontrol - Cadastrar Pacientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Máscaras para CPF, Telefone e CEP
+        function aplicarMascaras() {
+            const cpfInput = document.querySelector('input[name="cpf"]');
+            if (cpfInput) {
+                cpfInput.addEventListener('input', (e) => {
+                    let v = e.target.value.replace(/\D/g, '');
+                    if (v.length > 11) v = v.slice(0, 11);
+                    if (v.length > 9) {
+                        v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+                    } else if (v.length > 6) {
+                        v = v.replace(/^(\d{3})(\d{3})(\d{1,3})$/, "$1.$2.$3");
+                    } else if (v.length > 3) {
+                        v = v.replace(/^(\d{3})(\d{1,3})$/, "$1.$2");
+                    }
+                    e.target.value = v;
+                });
+            }
+
+            const telInput = document.querySelector('input[name="telefone"]');
+            if (telInput) {
+                telInput.addEventListener('input', (e) => {
+                    let v = e.target.value.replace(/\D/g, '');
+                    if (v.length > 11) v = v.slice(0, 11);
+                    if (v.length > 10) {
+                        v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+                    } else if (v.length > 6) {
+                        v = v.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+                    } else if (v.length > 2) {
+                        v = v.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
+                    } else if (v.length > 0) {
+                        v = v.replace(/^(\d*)$/, "($1");
+                    }
+                    e.target.value = v;
+                });
+            }
+
+            const cepInput = document.querySelector('input[name="cep"]');
+            if (cepInput) {
+                cepInput.addEventListener('input', (e) => {
+                    let v = e.target.value.replace(/\D/g, '');
+                    if (v.length > 8) v = v.slice(0, 8);
+                    if (v.length > 5) {
+                        v = v.replace(/^(\d{5})(\d{1,3})$/, "$1-$2");
+                    }
+                    e.target.value = v;
+                });
+            }
+        }
+
+        // Função para buscar CEP via ViaCEP ao apertar Enter ou sair do campo (sem salvar)
+        function consultarCep(inputCep) {
+            let cep = inputCep.value.replace(/\D/g, '');
+            if (cep.length !== 8) return;
+
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.erro) {
+                        const form = inputCep.closest('form');
+                        if (form) {
+                            const rua = form.querySelector('[name="rua"]');
+                            const bairro = form.querySelector('[name="bairro"]');
+                            const cidade = form.querySelector('[name="cidade_estado"]');
+                            
+                            if (rua) rua.value = data.logradouro || '';
+                            if (bairro) bairro.value = data.bairro || '';
+                            if (cidade) cidade.value = `${data.localidade} - ${data.uf}`;
+                        }
+                        mostrarToast('Endereço localizado com sucesso!', 'success');
+                    } else {
+                        mostrarToast('CEP não encontrado.', 'error');
+                    }
+                })
+                .catch(() => mostrarToast('Erro ao buscar CEP.', 'error'));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            aplicarMascaras();
+
+            const inputCep = document.querySelector('input[name="cep"]');
+            if (inputCep) {
+                inputCep.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // Impede o envio do formulário
+                        consultarCep(inputCep);
+                    }
+                });
+                inputCep.addEventListener('blur', () => {
+                    if (inputCep.value.replace(/\D/g, '').length === 8) {
+                        consultarCep(inputCep);
+                    }
+                });
+            }
+
+            // Toast flutuante inferior central
+            const flashMsgs = document.querySelectorAll('.flash-message-data');
+            flashMsgs.forEach(el => {
+                mostrarToast(el.getAttribute('data-msg'), el.getAttribute('data-tipo'));
+            });
+        });
+
+        function mostrarToast(mensagem, tipo = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            let corClasses = tipo === 'error' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white';
+
+            toast.className = `${corClasses} text-xs font-bold px-4 py-2.5 rounded-lg shadow-lg flex items-center space-x-2 transition-all duration-300 transform translate-y-10 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${tipo === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} text-sm"></i><span>${mensagem}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 50);
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</head>
+<body class="bg-[#f8fafc] flex flex-col h-screen m-0 select-none overflow-hidden font-sans">
+    
+    <div id="toast-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none"></div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message-data hidden" data-msg="{{ message }}" data-tipo="{{ category }}"></div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <header class="w-full h-14 bg-white shadow-sm flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-staff-snake text-lg text-blue-600"></i>
+            <span class="text-xl font-bold text-slate-800 tracking-wide">Medcontrol</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="/" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow"><i class="fa-solid fa-house mr-1"></i> Início</a>
+            <div class="flex items-center space-x-1.5 text-slate-700 text-sm font-semibold">
+                <i class="fa-solid fa-circle-user text-lg text-slate-600"></i>
+                <span>{{ session.get('username') }}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <aside class="w-64 bg-[#f0f4f8] border-r border-slate-200 flex flex-col justify-between shrink-0">
+            <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <a href="/" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-house w-4 text-slate-500"></i><span>Início</span></a>
+                <a href="/crm" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-calendar-days w-4 text-slate-500"></i><span>CRM - Gestão de agenda</span></a>
+                <a href="/pacientes" class="flex items-center space-x-3 px-3 py-2.5 rounded bg-blue-100 text-blue-950 font-bold"><i class="fa-solid fa-user-plus w-4 text-blue-600"></i><span>Cadastrar pacientes</span></a>
+                
+                {% if session.get('role') == 'admin' %}
+                <a href="/medicos/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-doctor w-4 text-slate-500"></i><span>Cadastrar médicos</span></a>
+                <a href="/especialidades" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-stethoscope w-4 text-slate-500"></i><span>Especialidades</span></a>
+                <a href="/hospitais/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-hospital w-4 text-slate-500"></i><span>Cadastrar Hospitais/clinicas</span></a>
+                <a href="/cadastros" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-address-book w-4 text-slate-500"></i><span>Contatos</span></a>
+                <a href="/procedimentos" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-syringe w-4 text-slate-500"></i><span>Agendar Procedimentos</span></a>
+                <a href="/admin/usuarios" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-gears w-4 text-slate-500"></i><span>Acesso do administrador</span></a>
+                {% endif %}
+            </nav>
+            <div class="p-4 border-t border-slate-200 bg-[#e4ecf4]">
+                <a href="/logout" class="block w-full bg-[#52799e] hover:bg-[#436280] text-white text-center font-semibold py-2 rounded shadow text-xs">Sair</a>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-6 overflow-y-auto bg-[#f8fafc] max-w-5xl mx-auto">
+            
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 text-xs">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h2 class="font-bold text-slate-800 text-sm uppercase">Novo Cadastro de Paciente</h2>
+                    <a href="/cadastros/pacientes" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded shadow">Botão voltar</a>
+                </div>
+
+                <form action="/pacientes" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">NOME DO PACIENTE:</label>
+                        <input type="text" name="nome" placeholder="Nome completo do paciente" required class="w-full border border-slate-300 rounded p-2 uppercase font-semibold text-slate-800">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">CPF:</label>
+                            <input type="text" name="cpf" placeholder="000.000.000-00" class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">TELEFONE:</label>
+                            <input type="text" name="telefone" placeholder="(00) 00000-0000" class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">E-MAIL:</label>
+                            <input type="email" name="email" placeholder="email@email.com" class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-3 font-bold text-slate-700 uppercase">Endereço e Contato:</div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">CEP (Busca automática):</label>
+                            <input type="text" name="cep" placeholder="00000-000" class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">LOGRADOURO / RUA:</label>
+                            <input type="text" name="rua" placeholder="Nome da rua, avenida..." class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">NÚMERO:</label>
+                            <input type="text" name="numero" placeholder="Nº ou S/N" class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">BAIRRO:</label>
+                            <input type="text" name="bairro" placeholder="Bairro" class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">CIDADE / ESTADO:</label>
+                            <input type="text" name="cidade_estado" placeholder="Cidade - RS" class="w-full border border-slate-300 rounded p-2">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">PONTO DE REFERÊNCIA:</label>
+                        <input type="text" name="referencia" placeholder="Próximo a..." class="w-full border border-slate-300 rounded p-2">
+                    </div>
+
+                    <div class="flex justify-start pt-2">
+                        <button type="submit" class="bg-[#1e293b] hover:bg-slate-900 text-white font-bold px-6 py-2.5 rounded shadow uppercase">Botão Salvar Paciente</button>
+                    </div>
+                </form>
+            </div>
+
+        </main>
+    </div>
+
+</body>
+</html>

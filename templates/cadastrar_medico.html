@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medcontrol - Cadastro de Médicos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        let localIndex = 0;
+
+        function adicionarLocalAtendimento() {
+            localIndex++;
+            const container = document.getElementById('locais-container');
+            const div = document.createElement('div');
+            div.className = 'bg-slate-50 p-4 rounded border border-slate-200 space-y-3 relative local-item';
+            div.innerHTML = `
+                <button type="button" onclick="this.parentElement.remove()" class="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-xs">
+                    <i class="fa-solid fa-trash"></i> Remover
+                </button>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pr-16">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">LOCAL DE ATENDIMENTO:</label>
+                        <div class="relative">
+                            <input type="text" name="local_atendimento[]" placeholder="Digite para buscar hospital/clínica..." oninput="buscarHospitais(this)" autocomplete="off" required class="w-full border border-slate-300 rounded p-1.5 bg-white shadow-inner local-input">
+                            <div class="autocomplete-items absolute z-10 bg-white border border-slate-300 w-full rounded-b shadow-lg hidden"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">HORÁRIO:</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" name="hora_inicio[]" placeholder="--:--" class="w-24 border border-slate-300 rounded p-1.5 bg-white shadow-inner text-center">
+                            <span>às</span>
+                            <input type="text" name="hora_fim[]" placeholder="--:--" class="w-24 border border-slate-300 rounded p-1.5 bg-white shadow-inner text-center">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">DIAS DE ATENDIMENTO:</label>
+                    <div class="flex flex-wrap gap-4 text-slate-700 pt-1">
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_${localIndex}[]" value="Segunda"><span>Segunda</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_${localIndex}[]" value="Terça"><span>Terça</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_${localIndex}[]" value="Quarta"><span>Quarta</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_${localIndex}[]" value="Quinta"><span>Quinta</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_${localIndex}[]" value="Sexta"><span>Sexta</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_${localIndex}[]" value="Sábado"><span>Sábado</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_${localIndex}[]" value="Domingo"><span>Domingo</span></label>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function buscarHospitais(input) {
+            let termo = input.value;
+            let listContainer = input.nextElementSibling;
+            if (!termo) {
+                listContainer.innerHTML = '';
+                listContainer.classList.add('hidden');
+                return;
+            }
+
+            fetch(`/api/hospitais?q=${encodeURIComponent(termo)}`)
+                .then(res => res.json())
+                .then(data => {
+                    listContainer.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(nome => {
+                            let item = document.createElement('div');
+                            item.className = 'p-2 hover:bg-slate-100 cursor-pointer text-xs border-b border-slate-100';
+                            item.innerText = nome;
+                            item.onclick = function() {
+                                input.value = nome;
+                                listContainer.innerHTML = '';
+                                listContainer.classList.add('hidden');
+                            };
+                            listContainer.appendChild(item);
+                        });
+                        listContainer.classList.remove('hidden');
+                    } else {
+                        listContainer.classList.add('hidden');
+                    }
+                });
+        }
+
+        function mascaraTelefone(input) {
+            let v = input.value.replace(/\D/g, '');
+            v = v.substring(0, 11);
+            if (v.length > 10) {
+                v = v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+            } else if (v.length > 6) {
+                v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+            } else if (v.length > 2) {
+                v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+            } else if (v.length > 0) {
+                v = v.replace(/^(\d*)/, '($1');
+            }
+            input.value = v;
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('local-input')) {
+                document.querySelectorAll('.autocomplete-items').forEach(el => el.classList.add('hidden'));
+            }
+        });
+    </script>
+</head>
+<body class="bg-[#f8fafc] flex flex-col h-screen m-0 select-none overflow-hidden font-sans">
+    
+    <header class="w-full h-14 bg-white shadow-sm flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-staff-snake text-lg text-blue-600"></i>
+            <span class="text-xl font-bold text-slate-800 tracking-wide">Medcontrol</span>
+        </div>
+        <div class="flex items-center space-x-3 text-slate-700 text-sm font-semibold">
+            <span class="text-xs bg-slate-100 border border-slate-200 px-2 py-1 rounded text-slate-600 font-bold">
+                {% if session.get('role') == 'admin' %}ADMINISTRADOR{% else %}USUÁRIO PADRÃO{% endif %}
+            </span>
+            <div class="flex items-center space-x-1.5 ml-2">
+                <i class="fa-solid fa-circle-user text-lg text-slate-600"></i>
+                <span>{{ session.get('username') }}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Menu Lateral Padronizado -->
+        <aside class="w-64 bg-[#f0f4f8] border-r border-slate-200 flex flex-col justify-between shrink-0">
+            <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <a href="/" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-house w-4 text-slate-500"></i><span>Início</span></a>
+                <a href="/crm" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-calendar-days w-4 text-slate-500"></i><span>CRM - Gestão de agenda</span></a>
+                <a href="/pacientes" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-user-plus w-4 text-slate-500"></i><span>Cadastrar pacientes</span></a>
+                
+                {% if session.get('role') == 'admin' %}
+                <a href="/medicos/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded bg-blue-100 text-blue-950 font-bold"><i class="fa-solid fa-user-doctor w-4 text-blue-600"></i><span>Cadastrar médicos</span></a>
+                <a href="/hospitais/cadastrar" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-hospital w-4 text-slate-500"></i><span>Cadastrar Hospitais/clinicas</span></a>
+                <a href="/cadastros" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-address-book w-4 text-slate-500"></i><span>Contatos</span></a>
+                <a href="/procedimentos" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-syringe w-4 text-slate-500"></i><span>Agendar Procedimentos</span></a>
+                <a href="/admin/usuarios" class="flex items-center space-x-3 px-3 py-2.5 rounded text-slate-700 hover:bg-blue-50"><i class="fa-solid fa-gears w-4 text-slate-500"></i><span>Acesso do administrador</span></a>
+                {% endif %}
+            </nav>
+            <div class="p-4 border-t border-slate-200 bg-[#e4ecf4]">
+                <a href="/logout" class="block w-full bg-[#52799e] hover:bg-[#436280] text-white text-center font-semibold py-2 rounded shadow text-xs">Sair</a>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-8 overflow-y-auto">
+            <div class="max-w-4xl mx-auto space-y-6">
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="p-3 bg-emerald-100 text-emerald-800 text-xs rounded font-semibold">{{ message }}</div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                <div class="bg-white p-6 rounded shadow-sm border border-slate-200">
+                    <h2 class="text-base font-bold text-slate-800 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                        Cadastro de Médico / Profissional de Saúde
+                    </h2>
+
+                    <form method="POST" class="space-y-4 text-xs">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">NOME DO MÉDICO:</label>
+                                <input type="text" name="nome" placeholder="Dr. Nome do Médico" required class="w-full border border-slate-300 rounded p-2 bg-white shadow-inner">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">ESPECIALIDADE:</label>
+                                <input type="text" name="especialidade" placeholder="Ex: Cardiologista" required class="w-full border border-slate-300 rounded p-2 bg-white shadow-inner">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">TELEFONE:</label>
+                                <input type="text" name="telefone" id="telefone" placeholder="(00) 00000-0000" oninput="mascaraTelefone(this)" maxlength="15" class="w-full border border-slate-300 rounded p-2 bg-white shadow-inner">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">E-MAIL:</label>
+                                <input type="email" name="email" placeholder="medico@email.com" class="w-full border border-slate-300 rounded p-2 bg-white shadow-inner">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-700 mb-1">TEMPO MÉDIO DE CONSULTA:</label>
+                                <input type="text" name="tempo_consulta" placeholder="Ex: 30 minutos" class="w-full border border-slate-300 rounded p-2 bg-white shadow-inner">
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-slate-800 uppercase">Locais e Horários de Atendimento</h3>
+                                <button type="button" onclick="adicionarLocalAtendimento()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded shadow text-xs">
+                                    <i class="fa-solid fa-plus mr-1"></i> Incluir Novo Local
+                                </button>
+                            </div>
+
+                            <div id="locais-container" class="space-y-4">
+                                <div class="bg-slate-50 p-4 rounded border border-slate-200 space-y-3 relative local-item">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pr-8">
+                                        <div>
+                                            <label class="block font-bold text-slate-700 mb-1">LOCAL DE ATENDIMENTO:</label>
+                                            <div class="relative">
+                                                <input type="text" name="local_atendimento[]" placeholder="Digite para buscar hospital/clínica..." oninput="buscarHospitais(this)" autocomplete="off" required class="w-full border border-slate-300 rounded p-1.5 bg-white shadow-inner local-input">
+                                                <div class="autocomplete-items absolute z-10 bg-white border border-slate-300 w-full rounded-b shadow-lg hidden"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block font-bold text-slate-700 mb-1">HORÁRIO:</label>
+                                            <div class="flex items-center space-x-2">
+                                                <input type="text" name="hora_inicio[]" placeholder="--:--" class="w-24 border border-slate-300 rounded p-1.5 bg-white shadow-inner text-center">
+                                                <span>às</span>
+                                                <input type="text" name="hora_fim[]" placeholder="--:--" class="w-24 border border-slate-300 rounded p-1.5 bg-white shadow-inner text-center">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-slate-700 mb-1">DIAS DE ATENDIMENTO:</label>
+                                        <div class="flex flex-wrap gap-4 text-slate-700 pt-1">
+                                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_0[]" value="Segunda"><span>Segunda</span></label>
+                                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_0[]" value="Terça"><span>Terça</span></label>
+                                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_0[]" value="Quarta"><span>Quarta</span></label>
+                                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_0[]" value="Quinta"><span>Quinta</span></label>
+                                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_0[]" value="Sexta"><span>Sexta</span></label>
+                                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_0[]" value="Sábado"><span>Sábado</span></label>
+                                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="dias_0[]" value="Domingo"><span>Domingo</span></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                            <button type="reset" class="bg-slate-400 hover:bg-slate-500 text-white font-bold px-5 py-2 rounded shadow">Limpar</button>
+                            <button type="submit" class="bg-[#364757] hover:bg-[#2c3a4a] text-white font-bold px-6 py-2 rounded shadow">Cadastrar Médico</button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>
