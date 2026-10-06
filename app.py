@@ -659,3 +659,12 @@ def excluir_usuario(id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+@app.route('/cadastros')
+@login_required
+def cadastros():
+    conn = get_db_connection()
+    pacientes = conn.execute('SELECT * FROM pacientes').fetchall()
+    medicos = conn.execute('SELECT * FROM medicos').fetchall()
+    clinicas = conn.execute('SELECT * FROM clinicas').fetchall()
+    conn.close()
+    return render_template('cadastros.html', pacientes=pacientes, medicos=medicos, clinicas=clinicas)
